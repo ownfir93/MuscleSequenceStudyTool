@@ -31,6 +31,13 @@ async def main():
         await page.wait_for_timeout(800)
         await page.screenshot(path=f"{OUT}/03_viz_reflex.png", full_page=False)
 
+        # Scroll-test sticky nav: nervous section, scroll down 500px, check tabs still visible
+        await page.locator('.sectab[data-sec="nervous"]').click()
+        await page.wait_for_timeout(400)
+        await page.evaluate("window.scrollTo(0, 700)")
+        await page.wait_for_timeout(300)
+        await page.screenshot(path=f"{OUT}/05_sticky_nervous_scrolled.png", full_page=False)
+
         # Contraction viz
         await page.locator('.sectab[data-sec="muscle"]').click()
         await page.wait_for_timeout(400)

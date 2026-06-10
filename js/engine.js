@@ -91,7 +91,7 @@ function activateSection(id){
   document.querySelectorAll('.sectab').forEach(t => t.classList.toggle('active', t.dataset.sec===id));
   document.querySelectorAll('.secpanel').forEach(p => p.classList.toggle('active', p.id==='sec-'+id));
   window.scrollTo({top:0, behavior:'smooth'});
-  // lazy-load viz panel content
+  if (typeof updateStickyOffsets === 'function') updateStickyOffsets();
   if (id==='viz') ensureVizLoaded();
 }
 
@@ -875,7 +875,7 @@ async function ensureVizLoaded(){
   if (__viz_loaded) return;
   __viz_loaded = true;
   try {
-    const viz = await import('./viz.js?v=4');
+    const viz = await import('./viz.js?v=7');
     viz.mountBody3D(document.getElementById('viz_body3d_host'));
     viz.mountAP(document.getElementById('viz_ap_host'));
     viz.mountReflex(document.getElementById('viz_reflex_host'));
@@ -960,10 +960,21 @@ function renderQuizHub(panel){
 }
 
 /* ============================================================
+ *  STICKY OFFSETS — keep modetabs flush below sectabs
+ * ============================================================ */
+function updateStickyOffsets(){
+  const st = document.getElementById('sectabs');
+  if (!st) return;
+  document.documentElement.style.setProperty('--sectabs-h', st.offsetHeight + 'px');
+}
+window.addEventListener('resize', updateStickyOffsets);
+
+/* ============================================================
  *  BOOT
  * ============================================================ */
 buildSectionTabs();
 buildAllPanels();
+updateStickyOffsets();
 if (STORE.section==='viz') ensureVizLoaded();
 
 document.getElementById('resetAll').onclick = (e) => {

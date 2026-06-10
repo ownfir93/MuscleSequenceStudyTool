@@ -40,7 +40,7 @@ export async function mountBody3D(host){
   wrap.appendChild(canvas);
   const overlay = el('div','viewer-overlay');
   overlay.innerHTML =
-    '<div class="sel-label" id="v3d_label"><div><b>Click a muscle to label it</b></div><div class="meta" id="v3d_meta">'+ALL_MUSCLES.length+' parts loaded</div></div>'+
+    '<div class="sel-label" id="v3d_label"><div><b>Click a muscle to label it</b></div><div class="meta" id="v3d_meta">'+ALL_MUSCLES.length+' parts loaded · drag to rotate · scroll to zoom · right-click drag to pan</div></div>'+
     '<div class="ctrls">'+
       '<button id="v3d_skel">Skeleton: ON</button>'+
       '<button id="v3d_mirror">Mirror: ON</button>'+
@@ -48,6 +48,18 @@ export async function mountBody3D(host){
       '<button id="v3d_isolate">Isolate: OFF</button>'+
     '</div>';
   wrap.appendChild(overlay);
+
+  // bottom-left pan + reset cluster (always discoverable)
+  const panctl = el('div','viewer-panctl');
+  panctl.innerHTML =
+    '<div class="panrow"><button id="v3d_panup" title="Pan up">▲</button></div>'+
+    '<div class="panrow">'+
+      '<button id="v3d_panleft" title="Pan left">◄</button>'+
+      '<button id="v3d_reset" title="Reset view">⟲</button>'+
+      '<button id="v3d_panright" title="Pan right">►</button>'+
+    '</div>'+
+    '<div class="panrow"><button id="v3d_pandown" title="Pan down">▼</button></div>';
+  wrap.appendChild(panctl);
   const loading = el('div','viewer-loading');
   loading.innerHTML = '<div class="spinner"></div><div id="v3d_progress">Loading 0 / '+ALL_MUSCLES.length+'</div>';
   wrap.appendChild(loading);
@@ -68,19 +80,26 @@ export async function mountBody3D(host){
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0e22);
 
-  const camera = new THREE.PerspectiveCamera(45, W/H, 1, 4000);
-  camera.position.set(0, 1100, 1100);
-  camera.lookAt(0, 1100, 0);
+  const camera = new THREE.PerspectiveCamera(45, W/H, 1, 8000);
+  camera.position.set(0, 0, 2000);
+
+  // Root container: rotate body so BodyParts3D's +Z (head) becomes Three.js +Y (up).
+  // Lets us keep camera.up = (0,1,0) so OrbitControls behaves naturally.
+  const root = new THREE.Group();
+  root.rotation.x = -Math.PI / 2;
+  scene.add(root);
 
   // Lights
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const dir1 = new THREE.DirectionalLight(0xffffff, 0.9); dir1.position.set(300, 600, 600); scene.add(dir1);
-  const dir2 = new THREE.DirectionalLight(0x88aaff, 0.4); dir2.position.set(-500, 200, -200); scene.add(dir2);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dir1 = new THREE.DirectionalLight(0xffffff, 0.85); dir1.position.set(500, 800, 800); scene.add(dir1);
+  const dir2 = new THREE.DirectionalLight(0x88aaff, 0.35); dir2.position.set(-500, 300, -400); scene.add(dir2);
 
-  // OrbitControls
+  // OrbitControls — quicker zoom, looser damping
   const controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true; controls.dampingFactor = 0.07;
-  controls.rotateSpeed = 0.7; controls.panSpeed = 0.7; controls.zoomSpeed = 0.8;
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 1.0; controls.panSpeed = 0.9; controls.zoomSpeed = 1.6;
+  controls.minDistance = 80;
+  controls.maxDistance = 6000;
 
   // Color palette per muscle group (data.js groups via DATA.limb / DATA.axial)
   const D = window.DATA || {};
@@ -123,14 +142,12 @@ export async function mountBody3D(host){
   }
 
   function fitCameraToBox(box){
+    // box is in world space (after the root rotation), so Y is up here.
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    // BodyParts3D coordinate system: +Z = up (head), +Y = front, +X = right.
-    // So we treat Z as up and view from -Y (in front of the body, anterior view).
     const maxDim = Math.max(size.x, size.y, size.z);
     const fitDist = maxDim / (2 * Math.tan(Math.PI * camera.fov / 360)) * 1.25;
-    camera.up.set(0, 0, 1);
-    camera.position.set(center.x, center.y - fitDist, center.z);
+    camera.position.set(center.x, center.y, center.z + fitDist);
     camera.lookAt(center);
     controls.target.copy(center);
     controls.update();
@@ -169,17 +186,18 @@ export async function mountBody3D(host){
         grp.add(o);
       }
     });
-    scene.add(grp);
+    root.add(grp);
     const mirrorGrp = grp.clone(true);
     mirrorGrp.scale.x = -1;
     mirrorGrp.name = name+'__mirror';
     mirrorGrp.userData.isMirror = true;
-    scene.add(mirrorGrp);
+    root.add(mirrorGrp);
     parts.set(name, { group: grp, mirror: mirrorGrp, isBone, displayGroup: groupOf(name), color });
-    boundsBox.expandByObject(grp);
   }
   loading.classList.add('hidden');
-  if (!boundsBox.isEmpty()) fitCameraToBox(boundsBox);
+  // compute bounds in world space (after root rotation), then frame
+  const worldBox = new THREE.Box3().setFromObject(root);
+  if (!worldBox.isEmpty()) fitCameraToBox(worldBox);
 
   // ---- selection ----
   let selected = null;
@@ -383,6 +401,36 @@ export async function mountBody3D(host){
   document.getElementById('v3d_qoff').onclick = () => setQuizMode(null);
   document.getElementById('v3d_qfind').classList.add('ghost');
   document.getElementById('v3d_qid').classList.add('ghost');
+
+  // ---- pan + reset buttons ----
+  function panBy(screenDX, screenDY){
+    // Pan amount scales with distance from target so it stays feeling consistent at any zoom.
+    const dist = camera.position.distanceTo(controls.target);
+    const amount = dist * 0.18; // ~18% of view distance per click
+    const right = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+    const up    = new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+    const delta = right.multiplyScalar(screenDX * amount).add(up.multiplyScalar(screenDY * amount));
+    camera.position.add(delta);
+    controls.target.add(delta);
+    controls.update();
+  }
+  document.getElementById('v3d_panup').onclick    = () => panBy(0, +1);
+  document.getElementById('v3d_pandown').onclick  = () => panBy(0, -1);
+  document.getElementById('v3d_panleft').onclick  = () => panBy(-1, 0);
+  document.getElementById('v3d_panright').onclick = () => panBy(+1, 0);
+  document.getElementById('v3d_reset').onclick    = () => {
+    const wb = new THREE.Box3().setFromObject(root);
+    if (!wb.isEmpty()) fitCameraToBox(wb);
+  };
+
+  // arrow-key panning while focused
+  canvas.tabIndex = 0;
+  canvas.addEventListener('keydown', (e) => {
+    if (e.key==='ArrowUp')    { panBy(0, +1); e.preventDefault(); }
+    else if (e.key==='ArrowDown')  { panBy(0, -1); e.preventDefault(); }
+    else if (e.key==='ArrowLeft')  { panBy(-1, 0); e.preventDefault(); }
+    else if (e.key==='ArrowRight') { panBy(+1, 0); e.preventDefault(); }
+  });
 
   // ---- animation loop ----
   function loop(){
@@ -693,56 +741,64 @@ export function mountReflex(host){
   const wrap = el('div','reflex-wrap');
   // Big viewBox so labels never clip
   wrap.innerHTML = `
-    <svg id="reflexsvg" viewBox="0 0 800 380" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block">
-      <!-- subtle hint dotted box for the cord (right) -->
-      <g id="rfx_cord" transform="translate(540 110)">
+    <svg id="reflexsvg" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block">
+      <!-- ===== layer 1: bodies (drawn first, behind everything) ===== -->
+      <!-- thigh -->
+      <g id="rfx_leg">
+        <rect x="40" y="180" width="380" height="56" fill="#4a4f7a" rx="14" stroke="#33407a"/>
+        <!-- patellar tendon -->
+        <rect x="200" y="238" width="28" height="22" fill="#c98bdb" rx="3"/>
+        <!-- leg (moved down so motor label has clear space above) -->
+        <g id="rfx_leg_lower">
+          <rect x="40" y="370" width="380" height="42" fill="#4a4f7a" rx="14" stroke="#33407a"/>
+        </g>
+      </g>
+      <!-- cord (right) -->
+      <g id="rfx_cord" transform="translate(540 160)">
         <ellipse cx="80" cy="80" rx="78" ry="78" fill="#252b58" stroke="#33407a" stroke-width="2"/>
         <!-- butterfly gray matter -->
         <path d="M 28 80 Q 44 50 70 50 Q 80 50 80 64 Q 80 50 90 50 Q 116 50 132 80 Q 116 110 90 110 Q 80 110 80 96 Q 80 110 70 110 Q 44 110 28 80 Z" fill="#3e477c"/>
-        <text x="80" y="20" text-anchor="middle" font-size="13" fill="#cfd5ff" font-weight="700">Spinal cord</text>
-        <text x="80" y="36" text-anchor="middle" font-size="11" fill="#9aa3cf">(cross-section)</text>
-        <text x="-7" y="68" text-anchor="end" font-size="11" fill="#ffd166" font-weight="700">dorsal horn</text>
-        <text x="-7" y="82" text-anchor="end" font-size="10" fill="#9aa3cf">(sensory in)</text>
-        <text x="167" y="100" font-size="11" fill="#ff7eb6" font-weight="700">ventral horn</text>
-        <text x="167" y="114" font-size="10" fill="#9aa3cf">(motor out)</text>
+        <!-- internal horn labels INSIDE the gray matter -->
+        <text x="48" y="64" font-size="9" fill="#ffd166" font-weight="700">dorsal</text>
+        <text x="112" y="100" font-size="9" fill="#ff7eb6" font-weight="700" text-anchor="end">ventral</text>
         <!-- dorsal root ganglion -->
         <circle id="rfx_drg" cx="-20" cy="50" r="13" fill="#5aa9ff" stroke="#0a0e22" stroke-width="1.5"/>
-        <text x="-20" y="32" text-anchor="middle" font-size="10" fill="#cfd5ff">DRG</text>
       </g>
 
-      <!-- thigh + leg (left side) -->
-      <g id="rfx_leg">
-        <rect x="40" y="150" width="380" height="56" fill="#4a4f7a" rx="14" stroke="#33407a"/>
-        <text x="230" y="184" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Quadriceps</text>
-        <text x="230" y="200" text-anchor="middle" font-size="10" fill="#bdc3ee">(effector + muscle spindle)</text>
-        <!-- patellar tendon -->
-        <rect x="240" y="208" width="28" height="22" fill="#c98bdb" rx="3"/>
-        <text x="254" y="252" text-anchor="middle" font-size="11" fill="#cfd5ff" font-weight="700">patellar tendon</text>
-        <text x="254" y="266" text-anchor="middle" font-size="9" fill="#9aa3cf">(tap here)</text>
-        <!-- leg -->
-        <g id="rfx_leg_lower">
-          <rect x="40" y="290" width="380" height="42" fill="#4a4f7a" rx="14" stroke="#33407a"/>
-          <text x="230" y="316" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Leg (extends → knee jerk)</text>
-        </g>
-        <!-- hammer -->
-        <g id="rfx_hammer" transform="translate(254 195)">
-          <rect x="-4" y="-30" width="8" height="20" fill="#ffd166"/>
-          <circle cx="0" cy="-34" r="10" fill="#ffd166" stroke="#0a0e22"/>
-        </g>
-      </g>
+      <!-- ===== layer 2: pathways ===== -->
+      <path id="rfx_aff" d="M 230 200 C 340 130, 470 130, 530 195" fill="none" stroke="#5aa9ff" stroke-width="3" stroke-dasharray="6 5"/>
+      <path id="rfx_eff" d="M 540 280 C 470 320, 360 290, 230 225" fill="none" stroke="#ff7eb6" stroke-width="3" stroke-dasharray="6 5"/>
 
-      <!-- AFFERENT path (quad spindle → DRG → cord) -->
-      <path id="rfx_aff" d="M 260 170 C 360 130, 460 130, 520 145" fill="none" stroke="#5aa9ff" stroke-width="3" stroke-dasharray="6 5"/>
-      <text x="380" y="110" font-size="13" fill="#5aa9ff" font-weight="700">①②③ sensory in</text>
-      <text x="380" y="126" font-size="11" fill="#9aa3cf">(via dorsal root)</text>
-
-      <!-- EFFERENT path (cord ventral horn → quad) -->
-      <path id="rfx_eff" d="M 540 245 C 460 280, 360 250, 260 210" fill="none" stroke="#ff7eb6" stroke-width="3" stroke-dasharray="6 5"/>
-      <text x="350" y="275" font-size="13" fill="#ff7eb6" font-weight="700">④⑤ motor out</text>
-      <text x="350" y="291" font-size="11" fill="#9aa3cf">(via ventral root)</text>
-
-      <!-- traveling pulse -->
+      <!-- ===== layer 3: pulse circle (animated) ===== -->
       <circle id="rfx_pulse" r="7" fill="#ffd166" opacity="0"/>
+
+      <!-- ===== layer 4: hammer (drawn after muscle so it overlaps nicely) ===== -->
+      <g id="rfx_hammer" transform="translate(214 230)">
+        <rect x="-4" y="-32" width="8" height="22" fill="#ffd166"/>
+        <circle cx="0" cy="-36" r="10" fill="#ffd166" stroke="#0a0e22"/>
+      </g>
+
+      <!-- ===== layer 5: ALL text labels last so nothing overlaps them ===== -->
+      <!-- muscle/leg labels -->
+      <text x="120" y="214" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Quadriceps</text>
+      <text x="120" y="230" text-anchor="middle" font-size="10" fill="#bdc3ee">(effector + spindle)</text>
+      <text x="214" y="282" text-anchor="middle" font-size="11" fill="#cfd5ff" font-weight="700">patellar tendon</text>
+      <text x="214" y="296" text-anchor="middle" font-size="9" fill="#9aa3cf">(tap here)</text>
+      <text x="230" y="396" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Leg (extends → knee jerk)</text>
+      <!-- pathway labels (with subtle background rect) -->
+      <g>
+        <rect x="320" y="124" width="170" height="34" fill="#0a0e22" opacity="0.7" rx="4"/>
+        <text x="405" y="142" text-anchor="middle" font-size="13" fill="#5aa9ff" font-weight="700">①②③ sensory in</text>
+        <text x="405" y="155" text-anchor="middle" font-size="10" fill="#9aa3cf">(via dorsal root)</text>
+      </g>
+      <g>
+        <rect x="290" y="316" width="150" height="34" fill="#0a0e22" opacity="0.7" rx="4"/>
+        <text x="365" y="334" text-anchor="middle" font-size="13" fill="#ff7eb6" font-weight="700">④⑤ motor out</text>
+        <text x="365" y="347" text-anchor="middle" font-size="10" fill="#9aa3cf">(via ventral root)</text>
+      </g>
+      <!-- cord/DRG labels -->
+      <text x="620" y="124" text-anchor="middle" font-size="13" fill="#cfd5ff" font-weight="700">Spinal cord</text>
+      <text x="510" y="195" text-anchor="middle" font-size="10" fill="#cfd5ff" font-weight="700">DRG</text>
     </svg>
   `;
   host.appendChild(wrap);
@@ -785,8 +841,8 @@ export function mountReflex(host){
     pulse.setAttribute('opacity', '0');
     if (i===0){
       hammer.style.transition = 'transform .25s cubic-bezier(.3,.6,.2,1)';
-      hammer.style.transform = 'translate(254px, 195px) rotate(-32deg)';
-      setTimeout(() => { hammer.style.transform = 'translate(254px, 195px) rotate(0deg)'; }, 280);
+      hammer.style.transform = 'translate(214px, 230px) rotate(-32deg)';
+      setTimeout(() => { hammer.style.transform = 'translate(214px, 230px) rotate(0deg)'; }, 280);
     } else if (i===1){
       animatePath(pulse, aff, '#5aa9ff');
     } else if (i===2){
@@ -798,7 +854,7 @@ export function mountReflex(host){
       animatePath(pulse, eff, '#ff7eb6');
     } else if (i===4){
       const lower = host.querySelector('#rfx_leg_lower');
-      lower.style.transformOrigin = '40px 311px';
+      lower.style.transformOrigin = '40px 391px';
       lower.style.transition = 'transform .35s cubic-bezier(.3,.6,.2,1)';
       lower.style.transform = 'rotate(-22deg)';
       setTimeout(() => { lower.style.transform = 'rotate(0)'; }, 600);
