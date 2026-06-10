@@ -1,0 +1,494 @@
+{
+  "deltoid": {
+    "fma": "FMA34685",
+    "name": "spinal part of left deltoid",
+    "file": "FMA34685.obj",
+    "bytes": 156732
+  },
+  "supraspinatus": {
+    "fma": "FMA32545",
+    "name": "left supraspinatus",
+    "file": "FMA32545.obj",
+    "bytes": 75068
+  },
+  "infraspinatus": {
+    "fma": "FMA32548",
+    "name": "left infraspinatus muscle",
+    "file": "FMA32548.obj",
+    "bytes": 69046
+  },
+  "teres minor": {
+    "fma": "FMA32554",
+    "name": "left teres minor",
+    "file": "FMA32554.obj",
+    "bytes": 37682
+  },
+  "teres major": {
+    "fma": "FMA32552",
+    "name": "left teres major",
+    "file": "FMA32552.obj",
+    "bytes": 92508
+  },
+  "subscapularis": {
+    "fma": "FMA13415",
+    "name": "left subscapularis",
+    "file": "FMA13415.obj",
+    "bytes": 228104
+  },
+  "biceps brachii": {
+    "fma": "FMA37687",
+    "name": "long head of left biceps brachii",
+    "file": "FMA37687.obj",
+    "bytes": 103260
+  },
+  "brachialis": {
+    "fma": "FMA37669",
+    "name": "left brachialis",
+    "file": "FMA37669.obj",
+    "bytes": 126072
+  },
+  "triceps brachii": {
+    "fma": "FMA37700",
+    "name": "long head of left triceps brachii",
+    "file": "FMA37700.obj",
+    "bytes": 112468
+  },
+  "coracobrachialis": {
+    "fma": "FMA37666",
+    "name": "left coracobrachialis",
+    "file": "FMA37666.obj",
+    "bytes": 39190
+  },
+  "pronator teres": {
+    "fma": "FMA38563",
+    "name": "ulnar head of left pronator teres",
+    "file": "FMA38563.obj",
+    "bytes": 76834
+  },
+  "flexor carpi radialis": {
+    "fma": "FMA38461",
+    "name": "left flexor carpi radialis",
+    "file": "FMA38461.obj",
+    "bytes": 82024
+  },
+  "palmaris longus": {
+    "fma": "FMA38464",
+    "name": "left palmaris longus",
+    "file": "FMA38464.obj",
+    "bytes": 430061
+  },
+  "flexor carpi ulnaris": {
+    "fma": "FMA38620",
+    "name": "ulnar head of left flexor carpi ulnaris",
+    "file": "FMA38620.obj",
+    "bytes": 148069
+  },
+  "brachioradialis": {
+    "fma": "FMA38487",
+    "name": "left brachioradialis",
+    "file": "FMA38487.obj",
+    "bytes": 356074
+  },
+  "flexor digitorum superficialis": {
+    "fma": "FMA38471",
+    "name": "left flexor digitorum superficialis",
+    "file": "FMA38471.obj",
+    "bytes": 657945
+  },
+  "flexor pollicis longus": {
+    "fma": "FMA38484",
+    "name": "left flexor pollicis longus",
+    "file": "FMA38484.obj",
+    "bytes": 149795
+  },
+  "extensor carpi radialis longus": {
+    "fma": "FMA38496",
+    "name": "left extensor carpi radialis longus",
+    "file": "FMA38496.obj",
+    "bytes": 177891
+  },
+  "extensor carpi radialis brevis": {
+    "fma": "FMA38499",
+    "name": "left extensor carpi radialis brevis",
+    "file": "FMA38499.obj",
+    "bytes": 156376
+  },
+  "extensor carpi ulnaris": {
+    "fma": "FMA38508",
+    "name": "left extensor carpi ulnaris",
+    "file": "FMA38508.obj",
+    "bytes": 245801
+  },
+  "supinator": {
+    "fma": "FMA38514",
+    "name": "left supinator",
+    "file": "FMA38514.obj",
+    "bytes": 240547
+  },
+  "gluteus maximus": {
+    "fma": "FMA22329",
+    "name": "left gluteus maximus",
+    "file": "FMA22329.obj",
+    "bytes": 195419
+  },
+  "gluteus medius": {
+    "fma": "FMA22331",
+    "name": "left gluteus medius",
+    "file": "FMA22331.obj",
+    "bytes": 244392
+  },
+  "piriformis": {
+    "fma": "FMA22341",
+    "name": "left piriformis",
+    "file": "FMA22341.obj",
+    "bytes": 78580
+  },
+  "psoas major": {
+    "fma": "FMA22343",
+    "name": "left psoas major",
+    "file": "FMA22343.obj",
+    "bytes": 376394
+  },
+  "iliacus": {
+    "fma": "FMA22323",
+    "name": "left iliacus",
+    "file": "FMA22323.obj",
+    "bytes": 236600
+  },
+  "tensor fasciae latae": {
+    "fma": "FMA22426",
+    "name": "left tensor fasciae latae",
+    "file": "FMA22426.obj",
+    "bytes": 101378
+  },
+  "biceps femoris": {
+    "fma": "FMA45889",
+    "name": "long head of left biceps femoris",
+    "file": "FMA45889.obj",
+    "bytes": 338042
+  },
+  "semitendinosus": {
+    "fma": "FMA22359",
+    "name": "left semitendinosus",
+    "file": "FMA22359.obj",
+    "bytes": 192790
+  },
+  "semimembranosus": {
+    "fma": "FMA22449",
+    "name": "left semimembranosus",
+    "file": "FMA22449.obj",
+    "bytes": 305370
+  },
+  "sartorius": {
+    "fma": "FMA22355",
+    "name": "left sartorius",
+    "file": "FMA22355.obj",
+    "bytes": 267711
+  },
+  "rectus femoris": {
+    "fma": "FMA38929",
+    "name": "left rectus femoris",
+    "file": "FMA38929.obj",
+    "bytes": 386385
+  },
+  "vastus lateralis": {
+    "fma": "FMA38931",
+    "name": "left vastus lateralis",
+    "file": "FMA38931.obj",
+    "bytes": 460942
+  },
+  "vastus medialis": {
+    "fma": "FMA38933",
+    "name": "left vastus medialis",
+    "file": "FMA38933.obj",
+    "bytes": 315070
+  },
+  "vastus intermedius": {
+    "fma": "FMA38935",
+    "name": "left vastus intermedius",
+    "file": "FMA38935.obj",
+    "bytes": 302163
+  },
+  "adductor longus": {
+    "fma": "FMA22457",
+    "name": "left adductor longus",
+    "file": "FMA22457.obj",
+    "bytes": 172318
+  },
+  "adductor magnus": {
+    "fma": "FMA22460",
+    "name": "left adductor magnus",
+    "file": "FMA22460.obj",
+    "bytes": 471924
+  },
+  "gracilis": {
+    "fma": "FMA43884",
+    "name": "left gracilis",
+    "file": "FMA43884.obj",
+    "bytes": 225310
+  },
+  "gastrocnemius": {
+    "fma": "FMA45958",
+    "name": "medial head of left gastrocnemius",
+    "file": "FMA45958.obj",
+    "bytes": 258641
+  },
+  "soleus": {
+    "fma": "FMA22559",
+    "name": "left soleus",
+    "file": "FMA22559.obj",
+    "bytes": 303662
+  },
+  "plantaris": {
+    "fma": "FMA22561",
+    "name": "left plantaris",
+    "file": "FMA22561.obj",
+    "bytes": 164531
+  },
+  "popliteus": {
+    "fma": "FMA22592",
+    "name": "left popliteus",
+    "file": "FMA22592.obj",
+    "bytes": 59674
+  },
+  "tibialis posterior": {
+    "fma": "FMA65019",
+    "name": "left tibialis posterior",
+    "file": "FMA65019.obj",
+    "bytes": 471162
+  },
+  "flexor digitorum longus": {
+    "fma": "FMA65017",
+    "name": "left flexor digitorum longus",
+    "file": "FMA65017.obj",
+    "bytes": 312760
+  },
+  "flexor hallucis longus": {
+    "fma": "FMA65015",
+    "name": "left flexor hallucis longus",
+    "file": "FMA65015.obj",
+    "bytes": 196608
+  },
+  "tibialis anterior": {
+    "fma": "FMA22545",
+    "name": "left tibialis anterior",
+    "file": "FMA22545.obj",
+    "bytes": 211659
+  },
+  "extensor hallucis longus": {
+    "fma": "FMA22547",
+    "name": "left extensor hallucis longus",
+    "file": "FMA22547.obj",
+    "bytes": 132515
+  },
+  "extensor digitorum longus": {
+    "fma": "FMA22549",
+    "name": "left extensor digitorum longus",
+    "file": "FMA22549.obj",
+    "bytes": 386321
+  },
+  "extensor digitorum": {
+    "fma": "FMA38502",
+    "name": "left extensor digitorum",
+    "file": "FMA38502.obj",
+    "bytes": 338663
+  },
+  "fibularis longus": {
+    "fma": "FMA22553",
+    "name": "left fibularis longus",
+    "file": "FMA22553.obj",
+    "bytes": 301944
+  },
+  "fibularis brevis": {
+    "fma": "FMA22555",
+    "name": "left fibularis brevis",
+    "file": "FMA22555.obj",
+    "bytes": 149364
+  },
+  "sternocleidomastoid": {
+    "fma": "FMA13409",
+    "name": "left sternocleidomastoid",
+    "file": "FMA13409.obj",
+    "bytes": 718388
+  },
+  "trapezius": {
+    "fma": "FMA33583",
+    "name": "ascending part of left trapezius",
+    "file": "FMA33583.obj",
+    "bytes": 807078
+  },
+  "rhomboid major": {
+    "fma": "FMA13382",
+    "name": "left rhomboid major",
+    "file": "FMA13382.obj",
+    "bytes": 544460
+  },
+  "rhomboid minor": {
+    "fma": "FMA13384",
+    "name": "left rhomboid minor",
+    "file": "FMA13384.obj",
+    "bytes": 156322
+  },
+  "levator scapulae": {
+    "fma": "FMA32541",
+    "name": "left levator scapulae",
+    "file": "FMA32541.obj",
+    "bytes": 353010
+  },
+  "serratus anterior": {
+    "fma": "FMA13399",
+    "name": "left serratus anterior",
+    "file": "FMA13399.obj",
+    "bytes": 3571899
+  },
+  "scalenus anterior": {
+    "fma": "FMA13393",
+    "name": "left scalenus anterior",
+    "file": "FMA13393.obj",
+    "bytes": 179909
+  },
+  "scalenus medius": {
+    "fma": "FMA13391",
+    "name": "left scalenus medius",
+    "file": "FMA13391.obj",
+    "bytes": 309508
+  },
+  "scalenus posterior": {
+    "fma": "FMA13389",
+    "name": "left scalenus posterior",
+    "file": "FMA13389.obj",
+    "bytes": 200162
+  },
+  "iliocostalis": {
+    "fma": "FMA22745",
+    "name": "left iliocostalis cervicis",
+    "file": "FMA22745.obj",
+    "bytes": 235971
+  },
+  "longissimus": {
+    "fma": "FMA22756",
+    "name": "left longissimus capitis",
+    "file": "FMA22756.obj",
+    "bytes": 178291
+  },
+  "spinalis": {
+    "fma": "FMA77179",
+    "name": "spinalis",
+    "file": "FMA77179.obj",
+    "bytes": 102979
+  },
+  "external intercostal": {
+    "fma": "FMA9756",
+    "name": "external intercostal muscle",
+    "file": "FMA9756.obj",
+    "bytes": 9040548
+  },
+  "internal intercostal": {
+    "fma": "FMA9757",
+    "name": "internal intercostal muscle",
+    "file": "FMA9757.obj",
+    "bytes": 7632850
+  },
+  "diaphragm": {
+    "fma": "FMA13295",
+    "name": "diaphragm",
+    "file": "FMA13295.obj",
+    "bytes": 4828614
+  },
+  "pectoralis major": {
+    "fma": "FMA45875",
+    "name": "abdominal part of left pectoralis major",
+    "file": "FMA45875.obj",
+    "bytes": 103980
+  },
+  "pectoralis minor": {
+    "fma": "FMA13376",
+    "name": "left pectoralis minor",
+    "file": "FMA13376.obj",
+    "bytes": 712353
+  },
+  "external oblique": {
+    "fma": "FMA13337",
+    "name": "left external oblique",
+    "file": "FMA13337.obj",
+    "bytes": 8250602
+  },
+  "platysma": {
+    "fma": "FMA45740",
+    "name": "left platysma",
+    "file": "FMA45740.obj",
+    "bytes": 896681
+  },
+  "humerus": {
+    "fma": "FMA23131",
+    "name": "left humerus",
+    "file": "FMA23131.obj",
+    "bytes": 247433
+  },
+  "scapula": {
+    "fma": "FMA13396",
+    "name": "left scapula",
+    "file": "FMA13396.obj",
+    "bytes": 1865742
+  },
+  "clavicle": {
+    "fma": "FMA13323",
+    "name": "left clavicle",
+    "file": "FMA13323.obj",
+    "bytes": 69713
+  },
+  "radius": {
+    "fma": "FMA23465",
+    "name": "left radius",
+    "file": "FMA23465.obj",
+    "bytes": 39879
+  },
+  "ulna": {
+    "fma": "FMA23468",
+    "name": "left ulna",
+    "file": "FMA23468.obj",
+    "bytes": 53065
+  },
+  "rib": {
+    "fma": "FMA8093",
+    "name": "left fifth rib",
+    "file": "FMA8093.obj",
+    "bytes": 622390
+  },
+  "hip bone": {
+    "fma": "FMA16587",
+    "name": "left hip bone",
+    "file": "FMA16587.obj",
+    "bytes": 144969
+  },
+  "sacrum": {
+    "fma": "FMA16202",
+    "name": "sacrum",
+    "file": "FMA16202.obj",
+    "bytes": 654882
+  },
+  "femur": {
+    "fma": "FMA24475",
+    "name": "left femur",
+    "file": "FMA24475.obj",
+    "bytes": 197179
+  },
+  "tibia": {
+    "fma": "FMA24478",
+    "name": "left tibia",
+    "file": "FMA24478.obj",
+    "bytes": 101393
+  },
+  "fibula": {
+    "fma": "FMA24481",
+    "name": "left fibula",
+    "file": "FMA24481.obj",
+    "bytes": 67082
+  },
+  "patella": {
+    "fma": "FMA24487",
+    "name": "left patella",
+    "file": "FMA24487.obj",
+    "bytes": 19171
+  }
+}
