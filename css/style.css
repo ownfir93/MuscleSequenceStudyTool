@@ -37,18 +37,23 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 
 /* ===== section tabs (top level) ===== */
 .sectabs{
-  position:sticky;top:0;z-index:30;display:flex;gap:6px;overflow-x:auto;
+  position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;gap:6px;
   padding:8px 2px;margin:0 -2px 12px;
   background:linear-gradient(180deg,var(--bg) 60%,rgba(15,18,38,0));
-  -webkit-backdrop-filter:blur(6px);scrollbar-width:none;
+  -webkit-backdrop-filter:blur(6px);
 }
-.sectabs::-webkit-scrollbar{display:none;}
 .sectab{
   flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
-  padding:9px 14px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap;
+  padding:8px 13px;border-radius:999px;font-size:13.5px;font-weight:600;white-space:nowrap;
   cursor:pointer;transition:.15s;
 }
+.sectab:hover{border-color:var(--accent);color:var(--ink);}
 .sectab.active{background:var(--accent);color:#08122e;border-color:var(--accent);}
+/* on tiny screens let the tabs scroll horizontally instead of stacking */
+@media (max-width:520px){
+  .sectabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+  .sectabs::-webkit-scrollbar{display:none;}
+}
 
 /* ===== mode tabs (per section) ===== */
 .modetabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
@@ -202,7 +207,17 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 .vchoice.wrong{border-color:var(--bad);background:rgba(255,107,107,.16);}
 .done-msg{font-size:16px;font-weight:600;color:#d6ffe6;text-align:center;padding:16px;border:1px solid var(--good);border-radius:12px;background:rgba(51,209,122,.10);line-height:1.5;}
 
-/* ===== ring ===== */
+/* ===== contraction visualizer: two-column on wide screens ===== */
+.contraction-viz{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:14px;align-items:start;}
+.contraction-viz .ring-wrap{margin:0;}
+.contraction-viz .scene-wrap{margin:0;}
+.contraction-viz #vz_ring{width:100%;height:auto;max-width:240px;}
+@media (max-width:640px){
+  .contraction-viz{grid-template-columns:1fr;}
+  .contraction-viz #vz_ring{max-width:200px;margin:0 auto;display:block;}
+}
+
+/* ===== ring (legacy, used elsewhere) ===== */
 .ring-wrap{display:flex;justify-content:center;margin:2px 0 8px;}
 #ring{width:230px;height:230px;max-width:64vw;}
 .ringnode.cur circle{filter:drop-shadow(0 0 5px #6ea8fe);}
@@ -225,7 +240,8 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 
 /* ===== 3D viewer ===== */
 .viewer3d-wrap{position:relative;background:#0a0e22;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:8px 0;}
-#viewer3d{width:100%;height:540px;display:block;cursor:grab;}
+#viewer3d{width:100%;height:520px;display:block;cursor:grab;}
+@media (max-width:520px){ #viewer3d{height:380px;} }
 #viewer3d.dragging{cursor:grabbing;}
 .viewer-overlay{position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;pointer-events:none;}
 .viewer-overlay .sel-label{background:rgba(15,18,38,.85);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;pointer-events:auto;max-width:60%;}
@@ -243,6 +259,7 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 
 /* ===== action potential viz ===== */
 .apgraph-wrap{background:#0a0e22;border:1px solid var(--line);border-radius:14px;padding:10px;margin:8px 0;}
+#apg{max-width:680px;margin:0 auto;}
 #apgraph{width:100%;height:280px;display:block;}
 .apphase-tag{display:inline-block;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:800;color:#08122e;letter-spacing:.4px;text-transform:uppercase;margin:6px 4px 2px 0;}
 .apphase-tag.rest{background:#9aa3cf;}
@@ -252,20 +269,25 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 .apphase-info{font-size:14px;line-height:1.5;margin:6px 4px;}
 
 /* ===== reflex arc ===== */
+.reflex-intro{margin:0 0 10px;}
+.reflex-caption{font-size:14px;line-height:1.45;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;color:#cfd5ff;}
 .reflex-wrap{background:#0a0e22;border:1px solid var(--line);border-radius:14px;padding:10px;}
-#reflexsvg{width:100%;height:auto;display:block;}
-.reflex-step{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;margin:6px 0;cursor:pointer;border:1px solid var(--line);background:var(--card2);}
-.reflex-step.active{background:var(--accent);color:#08122e;border-color:var(--accent);}
-.reflex-step .stepnum{font-weight:800;font-size:14px;min-width:24px;}
-.reflex-step .steptext{font-size:14px;line-height:1.35;}
+#reflexsvg{width:100%;height:auto;display:block;max-height:380px;}
+.reflex-steplist{margin-top:8px;}
+.reflex-step{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:10px;margin:6px 0;cursor:pointer;border:1px solid var(--line);background:var(--card2);transition:.15s;}
+.reflex-step:hover{border-color:var(--accent);}
+.reflex-step.active{background:rgba(110,168,254,.18);border-color:var(--accent);}
+.reflex-step .stepnum{font-weight:800;font-size:14px;min-width:24px;color:var(--accent);}
+.reflex-step.active .stepnum{color:#fff;}
+.reflex-step .steptext{font-size:14px;line-height:1.4;}
 
 /* ===== overview cards ===== */
-.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
-.overview-card{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;transition:.15s;}
-.overview-card:hover{border-color:var(--accent);}
-.overview-card h3{margin:0 0 6px;font-size:18px;font-weight:800;}
-.overview-card .desc{color:var(--muted);font-size:13.5px;line-height:1.4;margin:0 0 10px;}
-.overview-card .meta{font-size:12px;color:var(--muted);}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:14px;}
+.overview-card{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:6px;min-height:120px;}
+.overview-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+.overview-card h3{margin:0;font-size:17px;font-weight:800;}
+.overview-card .desc{color:var(--muted);font-size:13px;line-height:1.4;margin:0;flex:1;}
+.overview-card .meta{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.2px;}
 
 /* ===== quiz hub ===== */
 .qmix{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--line);border-radius:16px;padding:18px;margin:0 0 12px;}

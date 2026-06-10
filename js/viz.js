@@ -125,53 +125,60 @@ export async function mountBody3D(host){
   function fitCameraToBox(box){
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+    // BodyParts3D coordinate system: +Z = up (head), +Y = front, +X = right.
+    // So we treat Z as up and view from -Y (in front of the body, anterior view).
     const maxDim = Math.max(size.x, size.y, size.z);
-    const fitDist = maxDim / (2 * Math.tan(Math.PI * camera.fov / 360)) * 1.4;
-    camera.position.set(center.x, center.y, center.z + fitDist);
+    const fitDist = maxDim / (2 * Math.tan(Math.PI * camera.fov / 360)) * 1.25;
+    camera.up.set(0, 0, 1);
+    camera.position.set(center.x, center.y - fitDist, center.z);
     camera.lookAt(center);
     controls.target.copy(center);
     controls.update();
   }
 
-  // Load each part sequentially (sequential is friendlier on mobile)
+  // Load all parts in parallel (browser auto-throttles to ~6 connections)
   const names = ALL_MUSCLES.slice();
-  let aborted = false;
-  for (const name of names){
-    if (aborted) break;
+  const prog = document.getElementById('v3d_progress');
+  const results = await Promise.all(names.map(async (name) => {
     const entry = manifest[name];
     try {
       const obj = await loadOBJ('./models/'+entry.file);
-      const isBone = BONES.has(name);
-      const color = colorFor(name, isBone);
-      const mat = makeMaterial(color);
-      const grp = new THREE.Group();
-      grp.name = name;
-      obj.traverse(o => {
-        if (o.isMesh){
-          o.material = mat;
-          o.userData = { partName: name, isBone };
-          grp.add(o);
-        }
-      });
-      scene.add(grp);
-      // mirror right side (cheap)
-      const mirrorGrp = grp.clone(true);
-      mirrorGrp.scale.x = -1;
-      mirrorGrp.name = name+'__mirror';
-      mirrorGrp.userData.isMirror = true;
-      scene.add(mirrorGrp);
-      parts.set(name, { group: grp, mirror: mirrorGrp, isBone, displayGroup: groupOf(name), color });
-      // bounds
-      boundsBox.expandByObject(grp);
+      loaded++;
+      if (prog) prog.textContent = 'Loading '+loaded+' / '+names.length+' parts';
+      return { name, obj };
     } catch(e){
       console.warn('Failed to load', name, e);
+      loaded++;
+      if (prog) prog.textContent = 'Loading '+loaded+' / '+names.length+' parts';
+      return null;
     }
-    loaded++;
-    const prog = document.getElementById('v3d_progress');
-    if (prog) prog.textContent = 'Loading '+loaded+' / '+names.length+' parts';
+  }));
+
+  for (const r of results){
+    if (!r) continue;
+    const { name, obj } = r;
+    const isBone = BONES.has(name);
+    const color = colorFor(name, isBone);
+    const mat = makeMaterial(color);
+    const grp = new THREE.Group();
+    grp.name = name;
+    obj.traverse(o => {
+      if (o.isMesh){
+        o.material = mat;
+        o.userData = { partName: name, isBone };
+        grp.add(o);
+      }
+    });
+    scene.add(grp);
+    const mirrorGrp = grp.clone(true);
+    mirrorGrp.scale.x = -1;
+    mirrorGrp.name = name+'__mirror';
+    mirrorGrp.userData.isMirror = true;
+    scene.add(mirrorGrp);
+    parts.set(name, { group: grp, mirror: mirrorGrp, isBone, displayGroup: groupOf(name), color });
+    boundsBox.expandByObject(grp);
   }
   loading.classList.add('hidden');
-  // Frame camera
   if (!boundsBox.isEmpty()) fitCameraToBox(boundsBox);
 
   // ---- selection ----
@@ -286,14 +293,14 @@ export async function mountBody3D(host){
       });
     }
   }
+  // ---- HTML labels layer (must exist before applyLabels) ----
+  const labelLayer = el('div'); labelLayer.style.position='absolute'; labelLayer.style.inset='0'; labelLayer.style.pointerEvents='none'; wrap.appendChild(labelLayer);
+
   document.getElementById('v3d_skel').onclick = () => { skelOn = !skelOn; applySkeleton(); };
   document.getElementById('v3d_mirror').onclick = () => { mirrorOn = !mirrorOn; applyMirror(); };
   document.getElementById('v3d_labels').onclick = () => { labelsOn = !labelsOn; applyLabels(); };
   document.getElementById('v3d_isolate').onclick = () => { isolateOn = !isolateOn; applyIsolate(); };
   applySkeleton(); applyMirror(); applyLabels();
-
-  // ---- HTML labels (auto) ----
-  let labelLayer = el('div'); labelLayer.style.position='absolute'; labelLayer.style.inset='0'; labelLayer.style.pointerEvents='none'; wrap.appendChild(labelLayer);
   function redrawHTMLLabels(){
     labelLayer.innerHTML = '';
     if (!labelsOn) return;
@@ -564,8 +571,11 @@ export function mountBodyMap(host){
  * ============================================================ */
 export function mountAP(host){
   host.innerHTML = '';
+  const intro = el('div','reflex-caption', '<b>Action potential.</b> Hit <b>⚡ Fire AP</b> to watch the membrane potential go through its 4 phases. Tap a phase tag to read about it.');
+  host.appendChild(intro);
   const wrap = el('div','apgraph-wrap');
-  wrap.innerHTML = '<svg id="apg" viewBox="0 0 600 280" preserveAspectRatio="none"></svg>';
+  // viewBox stays the same, but labels live well inside the box so they don't clip
+  wrap.innerHTML = '<svg id="apg" viewBox="0 0 600 280" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block"></svg>';
   host.appendChild(wrap);
   const tags = el('div');
   tags.innerHTML = '<span class="apphase-tag rest">Rest</span><span class="apphase-tag depol">Depolarization</span>'+
@@ -583,16 +593,17 @@ export function mountAP(host){
   const W=600, H=280;
   function setBg(){
     let g = '';
-    // axes
-    g += '<line x1="40" y1="20" x2="40" y2="260" stroke="#33407a" stroke-width="1"/>';
-    g += '<line x1="40" y1="190" x2="580" y2="190" stroke="#33407a" stroke-width="1"/>';
-    // labels
-    g += '<text x="20" y="60" fill="#9aa3cf" font-size="12" text-anchor="end">+30 mV</text>';
-    g += '<text x="20" y="194" fill="#9aa3cf" font-size="12" text-anchor="end">-70 mV (rest)</text>';
-    g += '<text x="20" y="230" fill="#9aa3cf" font-size="12" text-anchor="end">-90 mV</text>';
-    g += '<line x1="40" y1="135" x2="580" y2="135" stroke="#33407a" stroke-dasharray="3 4" stroke-width="0.6"/>';
-    g += '<text x="48" y="133" fill="#ffd166" font-size="11" font-weight="700">threshold -55 mV</text>';
-    g += '<text x="300" y="276" fill="#9aa3cf" font-size="12" text-anchor="middle">time →</text>';
+    // axes (shifted right so labels have room)
+    g += '<line x1="90" y1="20" x2="90" y2="260" stroke="#33407a" stroke-width="1"/>';
+    g += '<line x1="90" y1="190" x2="580" y2="190" stroke="#33407a" stroke-width="1"/>';
+    // y-axis labels (inside the svg, right-aligned to axis)
+    g += '<text x="80" y="64" fill="#9aa3cf" font-size="13" text-anchor="end">+30 mV</text>';
+    g += '<text x="80" y="194" fill="#9aa3cf" font-size="13" text-anchor="end">-70 mV (rest)</text>';
+    g += '<text x="80" y="232" fill="#9aa3cf" font-size="13" text-anchor="end">-90 mV</text>';
+    // threshold line
+    g += '<line x1="90" y1="135" x2="580" y2="135" stroke="#33407a" stroke-dasharray="3 4" stroke-width="0.6"/>';
+    g += '<text x="98" y="131" fill="#ffd166" font-size="11" font-weight="700">threshold -55 mV</text>';
+    g += '<text x="335" y="275" fill="#9aa3cf" font-size="12" text-anchor="middle">time →</text>';
     g += '<polyline id="ap_curve" fill="none" stroke="#6ea8fe" stroke-width="2.5"/>';
     g += '<circle id="ap_dot" r="6" fill="#ffd166" stroke="#0c1024"/>';
     svg.innerHTML = g;
@@ -606,7 +617,7 @@ export function mountAP(host){
     return 60 + (30 - v) / 120 * 170;
   }
   function tToX(t){
-    return 40 + t * 540 / 100;
+    return 90 + t * 490 / 100;
   }
 
   let firing = false;
@@ -668,57 +679,79 @@ export function mountAP(host){
 }
 
 /* ============================================================
- *  REFLEX ARC ANIMATION
+ *  REFLEX ARC ANIMATION (rebuilt for clarity + responsive SVG)
  * ============================================================ */
 export function mountReflex(host){
   host.innerHTML = '';
-  // SVG of the patellar reflex
+
+  // intro banner + caption (top)
+  const intro = el('div','reflex-intro');
+  intro.innerHTML = '<div class="reflex-caption" id="rfx_cap"><b>Patellar (knee-jerk) reflex.</b> Click <b>▶ Play full arc</b> below, or tap a step to see just that phase.</div>';
+  host.appendChild(intro);
+
+  // SVG container — responsive via viewBox + preserveAspectRatio
   const wrap = el('div','reflex-wrap');
+  // Big viewBox so labels never clip
   wrap.innerHTML = `
-    <svg id="reflexsvg" viewBox="0 0 520 340">
-      <!-- spinal cord cross-section (right side) -->
-      <g id="rfx_cord" transform="translate(360, 30)">
-        <ellipse cx="60" cy="80" rx="55" ry="60" fill="#252b58" stroke="#33407a" stroke-width="2"/>
-        <!-- gray matter (butterfly) -->
-        <path d="M 20,80 Q 30,55 50,55 Q 60,55 60,65 Q 60,55 70,55 Q 90,55 100,80 Q 90,105 70,105 Q 60,105 60,95 Q 60,105 50,105 Q 30,105 20,80 Z" fill="#3e477c"/>
-        <text x="60" y="22" text-anchor="middle" font-size="11" fill="#9aa3cf">Spinal cord (cross-section)</text>
-        <text x="20" y="80" text-anchor="end" font-size="9" fill="#ffd166">dorsal horn (sensory)</text>
-        <text x="100" y="115" font-size="9" fill="#ff7eb6">ventral horn (motor)</text>
-        <!-- dorsal root + ganglion -->
-        <circle cx="-30" cy="62" r="11" fill="#5aa9ff" stroke="#0a0e22" stroke-width="1"/>
-        <text x="-50" y="48" font-size="9" fill="#9aa3cf">dorsal root ganglion</text>
-        <!-- ventral root -->
+    <svg id="reflexsvg" viewBox="0 0 800 380" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block">
+      <!-- subtle hint dotted box for the cord (right) -->
+      <g id="rfx_cord" transform="translate(540 110)">
+        <ellipse cx="80" cy="80" rx="78" ry="78" fill="#252b58" stroke="#33407a" stroke-width="2"/>
+        <!-- butterfly gray matter -->
+        <path d="M 28 80 Q 44 50 70 50 Q 80 50 80 64 Q 80 50 90 50 Q 116 50 132 80 Q 116 110 90 110 Q 80 110 80 96 Q 80 110 70 110 Q 44 110 28 80 Z" fill="#3e477c"/>
+        <text x="80" y="20" text-anchor="middle" font-size="13" fill="#cfd5ff" font-weight="700">Spinal cord</text>
+        <text x="80" y="36" text-anchor="middle" font-size="11" fill="#9aa3cf">(cross-section)</text>
+        <text x="-7" y="68" text-anchor="end" font-size="11" fill="#ffd166" font-weight="700">dorsal horn</text>
+        <text x="-7" y="82" text-anchor="end" font-size="10" fill="#9aa3cf">(sensory in)</text>
+        <text x="167" y="100" font-size="11" fill="#ff7eb6" font-weight="700">ventral horn</text>
+        <text x="167" y="114" font-size="10" fill="#9aa3cf">(motor out)</text>
+        <!-- dorsal root ganglion -->
+        <circle id="rfx_drg" cx="-20" cy="50" r="13" fill="#5aa9ff" stroke="#0a0e22" stroke-width="1.5"/>
+        <text x="-20" y="32" text-anchor="middle" font-size="10" fill="#cfd5ff">DRG</text>
       </g>
 
-      <!-- thigh + leg + tendon -->
+      <!-- thigh + leg (left side) -->
       <g id="rfx_leg">
-        <rect x="40" y="120" width="260" height="50" fill="#4a4f7a" rx="14"/>
-        <text x="170" y="148" text-anchor="middle" font-size="11" fill="#eef1ff">quadriceps (effector + spindle)</text>
-        <rect x="200" y="175" width="20" height="14" fill="#c98bdb"/>
-        <text x="210" y="200" text-anchor="middle" font-size="9" fill="#9aa3cf">patellar tendon (tap here)</text>
-        <rect x="30" y="220" width="270" height="35" fill="#4a4f7a" rx="12"/>
-        <text x="170" y="242" text-anchor="middle" font-size="11" fill="#eef1ff">leg (extends — knee jerk)</text>
+        <rect x="40" y="150" width="380" height="56" fill="#4a4f7a" rx="14" stroke="#33407a"/>
+        <text x="230" y="184" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Quadriceps</text>
+        <text x="230" y="200" text-anchor="middle" font-size="10" fill="#bdc3ee">(effector + muscle spindle)</text>
+        <!-- patellar tendon -->
+        <rect x="240" y="208" width="28" height="22" fill="#c98bdb" rx="3"/>
+        <text x="254" y="252" text-anchor="middle" font-size="11" fill="#cfd5ff" font-weight="700">patellar tendon</text>
+        <text x="254" y="266" text-anchor="middle" font-size="9" fill="#9aa3cf">(tap here)</text>
+        <!-- leg -->
+        <g id="rfx_leg_lower">
+          <rect x="40" y="290" width="380" height="42" fill="#4a4f7a" rx="14" stroke="#33407a"/>
+          <text x="230" y="316" text-anchor="middle" font-size="14" fill="#eef1ff" font-weight="700">Leg (extends → knee jerk)</text>
+        </g>
         <!-- hammer -->
-        <g id="rfx_hammer" transform="translate(210, 175)">
-          <rect x="-3" y="-30" width="6" height="20" fill="#ffd166"/>
-          <circle cx="0" cy="-32" r="8" fill="#ffd166"/>
+        <g id="rfx_hammer" transform="translate(254 195)">
+          <rect x="-4" y="-30" width="8" height="20" fill="#ffd166"/>
+          <circle cx="0" cy="-34" r="10" fill="#ffd166" stroke="#0a0e22"/>
         </g>
       </g>
 
-      <!-- afferent path -->
-      <path id="rfx_aff" d="M 220 145 Q 290 110 330 90" stroke="#5aa9ff" stroke-width="3" fill="none" stroke-dasharray="6 4"/>
-      <text x="265" y="100" font-size="10" fill="#5aa9ff" font-weight="700">①②③ sensory in (dorsal root)</text>
-      <!-- efferent path -->
-      <path id="rfx_eff" d="M 460 110 Q 380 180 220 230" stroke="#ff7eb6" stroke-width="3" fill="none" stroke-dasharray="6 4"/>
-      <text x="330" y="200" font-size="10" fill="#ff7eb6" font-weight="700">④⑤ motor out (ventral root)</text>
+      <!-- AFFERENT path (quad spindle → DRG → cord) -->
+      <path id="rfx_aff" d="M 260 170 C 360 130, 460 130, 520 145" fill="none" stroke="#5aa9ff" stroke-width="3" stroke-dasharray="6 5"/>
+      <text x="380" y="110" font-size="13" fill="#5aa9ff" font-weight="700">①②③ sensory in</text>
+      <text x="380" y="126" font-size="11" fill="#9aa3cf">(via dorsal root)</text>
+
+      <!-- EFFERENT path (cord ventral horn → quad) -->
+      <path id="rfx_eff" d="M 540 245 C 460 280, 360 250, 260 210" fill="none" stroke="#ff7eb6" stroke-width="3" stroke-dasharray="6 5"/>
+      <text x="350" y="275" font-size="13" fill="#ff7eb6" font-weight="700">④⑤ motor out</text>
+      <text x="350" y="291" font-size="11" fill="#9aa3cf">(via ventral root)</text>
+
       <!-- traveling pulse -->
-      <circle id="rfx_pulse" r="6" fill="#ffd166" opacity="0"/>
+      <circle id="rfx_pulse" r="7" fill="#ffd166" opacity="0"/>
     </svg>
   `;
   host.appendChild(wrap);
 
+  // Step list (numbered, clickable)
+  const stepsTitle = el('p','hint','Tap a step to play it, or use <b>Play full arc</b> below.');
+  host.appendChild(stepsTitle);
   const STEPS = (window.DATA.spinal.sequences || []).find(s => s.id==='reflex-arc')?.steps || [];
-  const stepList = el('div');
+  const stepList = el('div','reflex-steplist');
   STEPS.forEach((s, i) => {
     const r = el('div','reflex-step');
     r.dataset.i = i;
@@ -727,12 +760,22 @@ export function mountReflex(host){
     stepList.appendChild(r);
   });
   host.appendChild(stepList);
+
   const ctl = el('div','controls'); ctl.style.justifyContent='center';
   ctl.innerHTML = '<button class="btn primary" id="rfx_play">▶ Play full arc</button><button class="btn ghost" id="rfx_reset">↺ Reset</button>';
   host.appendChild(ctl);
 
+  const PHASE_LABELS = [
+    '① Hammer taps the patellar tendon — quadriceps spindle stretches.',
+    '② Sensory neuron fires AP toward the spinal cord via the dorsal root.',
+    '③ Sensory axon synapses directly on a motor neuron in the ventral horn (monosynaptic).',
+    '④ Motor neuron fires AP back to the quadriceps via the ventral root.',
+    '⑤ Quadriceps contracts — the leg extends (knee jerk, ipsilateral).'
+  ];
+  const cap = host.querySelector('#rfx_cap');
   function clearActive(){ stepList.querySelectorAll('.reflex-step').forEach(r => r.classList.remove('active')); }
-  function setActive(i){ clearActive(); const r = stepList.querySelector('[data-i="'+i+'"]'); if (r) r.classList.add('active'); }
+  function setActive(i){ clearActive(); const r = stepList.querySelector('[data-i="'+i+'"]'); if (r) r.classList.add('active'); cap.innerHTML = '<b>Step '+(i+1)+' of 5.</b> ' + PHASE_LABELS[i]; }
+
   function playStep(i){
     setActive(i);
     const pulse = host.querySelector('#rfx_pulse');
@@ -741,41 +784,41 @@ export function mountReflex(host){
     const hammer = host.querySelector('#rfx_hammer');
     pulse.setAttribute('opacity', '0');
     if (i===0){
-      // hammer tap
-      hammer.style.transition='transform .2s'; hammer.style.transform='translate(210px, 175px) rotate(-30deg)';
-      setTimeout(() => { hammer.style.transform='translate(210px, 175px) rotate(0deg)'; }, 220);
+      hammer.style.transition = 'transform .25s cubic-bezier(.3,.6,.2,1)';
+      hammer.style.transform = 'translate(254px, 195px) rotate(-32deg)';
+      setTimeout(() => { hammer.style.transform = 'translate(254px, 195px) rotate(0deg)'; }, 280);
     } else if (i===1){
-      // pulse along afferent
-      animatePath(pulse, aff);
+      animatePath(pulse, aff, '#5aa9ff');
     } else if (i===2){
-      // flash cord
       const cord = host.querySelector('#rfx_cord');
-      cord.style.filter='drop-shadow(0 0 8px #6ea8fe)';
-      setTimeout(() => cord.style.filter='', 700);
+      cord.style.transition = 'filter .25s';
+      cord.style.filter = 'drop-shadow(0 0 10px #6ea8fe)';
+      setTimeout(() => cord.style.filter = '', 800);
     } else if (i===3){
-      animatePath(pulse, eff);
+      animatePath(pulse, eff, '#ff7eb6');
     } else if (i===4){
-      // leg kick
-      const leg = host.querySelector('#rfx_leg');
-      const legPart = leg.querySelector('rect[y="220"]');
-      legPart.style.transformOrigin='40px 237px';
-      legPart.style.transition='transform .3s';
-      legPart.style.transform='rotate(-22deg)';
-      setTimeout(() => { legPart.style.transform='rotate(0)'; }, 420);
+      const lower = host.querySelector('#rfx_leg_lower');
+      lower.style.transformOrigin = '40px 311px';
+      lower.style.transition = 'transform .35s cubic-bezier(.3,.6,.2,1)';
+      lower.style.transform = 'rotate(-22deg)';
+      setTimeout(() => { lower.style.transform = 'rotate(0)'; }, 600);
     }
   }
-  function animatePath(circle, path){
+  function animatePath(circle, path, color){
     const len = path.getTotalLength();
-    let t = 0;
+    circle.setAttribute('fill', color || '#ffd166');
     circle.setAttribute('opacity','1');
-    function step(){
-      if (t > 1){ circle.setAttribute('opacity','0'); return; }
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - start) / 900);
       const p = path.getPointAtLength(len * t);
       circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y);
-      t += 0.025; requestAnimationFrame(step);
+      if (t < 1) requestAnimationFrame(step);
+      else circle.setAttribute('opacity','0');
     }
-    step();
+    requestAnimationFrame(step);
   }
+
   let playing=false;
   host.querySelector('#rfx_play').onclick = async () => {
     if (playing) return; playing = true;
@@ -785,5 +828,9 @@ export function mountReflex(host){
     }
     playing=false;
   };
-  host.querySelector('#rfx_reset').onclick = () => { clearActive(); host.querySelector('#rfx_pulse').setAttribute('opacity','0'); };
+  host.querySelector('#rfx_reset').onclick = () => {
+    clearActive();
+    host.querySelector('#rfx_pulse').setAttribute('opacity','0');
+    cap.innerHTML = '<b>Patellar (knee-jerk) reflex.</b> Click <b>▶ Play full arc</b> below, or tap a step to see just that phase.';
+  };
 }

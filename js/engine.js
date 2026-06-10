@@ -114,7 +114,7 @@ function buildAllPanels(){
  *  OVERVIEW
  * ============================================================ */
 function renderOverview(panel){
-  panel.appendChild(el('p','hint','Tap a section to start. Progress (known cards, best streaks) saves on this device.'));
+  panel.appendChild(el('p','hint','Tap a section to start. Progress saves on this device.'));
   const grid = el('div','overview-grid');
   SECTIONS.filter(s => s.kind !== 'overview').forEach(s => {
     const c = el('div','overview-card');
@@ -122,29 +122,31 @@ function renderOverview(panel){
     c.appendChild(el('h3', null, s.emoji+' '+s.title));
     let desc = '';
     if (s.data && s.data.blurb) desc = s.data.blurb;
-    else if (s.id==='viz') desc = '3D muscle viewer (BodyParts3D), 2D body map, AP graph, reflex arc animation.';
+    else if (s.id==='viz') desc = '3D muscle viewer, action-potential graph, reflex arc animation.';
     else if (s.id==='quiz') desc = 'Random mixed quiz across every section. Streak-based scoring.';
     c.appendChild(el('p','desc', desc));
     const meta = [];
     if (s.data){
-      if (s.data.cards && s.data.cards.length) meta.push(s.data.cards.length+' flashcards');
-      if (s.data.learn && s.data.learn.length) meta.push(s.data.learn.length+' lessons');
       if (s.data.muscles && s.data.muscles.length) meta.push(s.data.muscles.length+' muscles');
+      if (s.data.learn && s.data.learn.length) meta.push(s.data.learn.length+' lessons');
+      if (s.data.cards && s.data.cards.length) meta.push(s.data.cards.length+' flashcards');
       if (s.data.sequences && s.data.sequences.length) meta.push(s.data.sequences.length+' sequence'+(s.data.sequences.length>1?'s':''));
+    } else if (s.id==='viz'){
+      meta.push('3D viewer · AP graph · reflex arc');
+    } else if (s.id==='quiz'){
+      meta.push('all sections mixed');
     }
     c.appendChild(el('div','meta', meta.join(' · ')));
     grid.appendChild(c);
   });
   panel.appendChild(grid);
 
-  // What's covered card
   const cov = el('div','card');
-  cov.innerHTML = '<h3 class="subtitle">What\'s here</h3>'+
-    '<p class="cardsub">All content traced to your BI231 sources:</p>'+
+  cov.innerHTML = '<h3 class="subtitle" style="margin:0 0 8px">Sources</h3>'+
     '<ul style="font-size:14px;line-height:1.55;color:#cfd5ff;margin:0;padding-left:20px;">'+
     '<li><b>Final exam study guide</b> — every numbered item used as a topic</li>'+
-    '<li><b>Lab 6: Axial Muscles</b> — head, neck, back, anterior torso (~22 muscles)</li>'+
-    '<li><b>Lab 7: Muscles of the Limbs</b> — shoulder, arm, forearm, hip, thigh, leg (~50 muscles)</li>'+
+    '<li><b>Lab 6: Axial Muscles</b> — head, neck, back, anterior torso (27 muscles)</li>'+
+    '<li><b>Lab 7: Limb Muscles</b> — shoulder, arm, forearm, hip, thigh, leg (51 muscles)</li>'+
     '<li><b>Lab 8: Nervous Tissue &amp; Spinal Cord</b> — neuron anatomy, plexuses, reflexes</li>'+
     '</ul>';
   panel.appendChild(cov);
@@ -512,10 +514,13 @@ function renderSequenceOrder(mp, seq, secId){
 
 /* ====== CONTRACTION VISUALIZE (kept from original) ====== */
 function renderContractionViz(mp, seq, secId){
-  // Build ring + scene + caption + quiz (same as original)
   mp.appendChild(el('div','vizhead', '<span class="pill" id="vz_status">Step 1 of '+seq.steps.length+'</span><span class="pill" id="vz_score">Streak: 0</span>'));
-  mp.appendChild(el('div','ring-wrap', '<svg id="vz_ring" viewBox="0 0 260 260" aria-hidden="true"></svg>'));
-  mp.appendChild(el('div','scene-wrap', '<svg id="vz_scene" viewBox="0 0 320 170"></svg>'));
+  // Two-column layout: ring on the left, scene on the right (stacks on mobile)
+  const dual = el('div','contraction-viz');
+  dual.innerHTML =
+    '<div class="ring-wrap"><svg id="vz_ring" viewBox="0 0 260 260" aria-hidden="true"></svg></div>'+
+    '<div class="scene-wrap"><svg id="vz_scene" viewBox="0 0 320 170"></svg></div>';
+  mp.appendChild(dual);
   mp.appendChild(el('div','caption', '<span id="vz_cap"></span>'));
   mp.appendChild(el('div','qbox', '<div class="qlabel" id="vz_ql">Which step comes next?</div><div id="vz_choices"></div>'));
   const ctl = el('div','controls'); ctl.style.justifyContent='center'; ctl.style.marginTop='6px';
@@ -849,7 +854,6 @@ function renderMuscleOIA(mp, muscles, secId){
 function renderVizSection(panel){
   const modes = [
     {id:'body3d', label:'🧍 3D Muscle Viewer'},
-    {id:'bodymap', label:'🗺️ 2D Body Map'},
     {id:'ap', label:'⚡ Action Potential'},
     {id:'reflex', label:'🔄 Reflex Arc'},
   ];
@@ -857,8 +861,7 @@ function renderVizSection(panel){
   modes.forEach(m => {
     const mp = el('div','modepanel');
     mp.dataset.mode = m.id;
-    if (m.id==='body3d') mp.innerHTML = '<p class="hint">Loading 3D viewer…</p><div id="viz_body3d_host"></div>';
-    else if (m.id==='bodymap') mp.innerHTML = '<div id="viz_bodymap_host"></div>';
+    if (m.id==='body3d') mp.innerHTML = '<div id="viz_body3d_host"></div>';
     else if (m.id==='ap') mp.innerHTML = '<div id="viz_ap_host"></div>';
     else if (m.id==='reflex') mp.innerHTML = '<div id="viz_reflex_host"></div>';
     panel.appendChild(mp);
@@ -872,14 +875,14 @@ async function ensureVizLoaded(){
   if (__viz_loaded) return;
   __viz_loaded = true;
   try {
-    const viz = await import('./viz.js');
+    const viz = await import('./viz.js?v=4');
     viz.mountBody3D(document.getElementById('viz_body3d_host'));
-    viz.mountBodyMap(document.getElementById('viz_bodymap_host'));
     viz.mountAP(document.getElementById('viz_ap_host'));
     viz.mountReflex(document.getElementById('viz_reflex_host'));
   } catch(e){
     console.error('viz load failed:', e);
-    document.getElementById('viz_body3d_host').innerHTML = '<p class="hint">Couldn\'t load 3D viewer: '+e.message+'</p>';
+    const host = document.getElementById('viz_body3d_host');
+    if (host) host.innerHTML = '<p class="hint">Couldn\'t load 3D viewer: '+e.message+'</p>';
   }
 }
 
