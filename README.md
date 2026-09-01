@@ -1,6 +1,6 @@
 # BI231 Final Exam — Study Aid
 
-A single-page (no build, no backend) study tool for BI231 Anatomy &amp; Physiology I, deployed on GitHub Pages.
+A single-page (no build, no backend) study tool for BI231 Anatomy & Physiology I, deployed on GitHub Pages.
 
 **Live page:** https://ownfir93.github.io/MuscleSequenceStudyTool/
 
@@ -10,13 +10,13 @@ Grounded in the BI231 (Fall 2025) sources:
 - **Final exam study guide** — every numbered topic
 - **Lab 6: Axial Muscles** — head, neck, back, anterior torso (~22 muscles)
 - **Lab 7: Muscles of the Limbs** — shoulder, arm, forearm, hip, thigh, leg (~50 muscles)
-- **Lab 8: Nervous Tissue &amp; Spinal Cord** — neuron anatomy, plexuses, reflexes
+- **Lab 8: Nervous Tissue & Spinal Cord** — neuron anatomy, plexuses, reflexes
 
 ## Sections
 
 - 🧠 **Nervous Tissue** — divisions, glia (Schwann / oligodendrocytes / astrocytes / ependymal / microglia / satellite), neuron anatomy and transmembrane proteins, AP phases, graded potentials, refractory periods, botulism, myelin
 - 💪 **Muscle Tissue** — sarcomere, CT layers, NMJ, sliding filament, contraction types, motor units, metabolism, fatigue. Includes the original 9-step Sequence of Muscle Contraction with the cross-bridge visualization
-- 🔗 **Spinal Cord &amp; Reflexes** — cord cross-section, dorsal vs ventral roots, 31 nerve pairs, plexuses (cervical / brachial / lumbar / sacral), 3-order sensory tracts, reflex types (stretch / DTR / withdrawal / crossed extensor / pupillary)
+- 🔗 **Spinal Cord & Reflexes** — cord cross-section, dorsal vs ventral roots, 31 nerve pairs, plexuses (cervical / brachial / lumbar / sacral), 3-order sensory tracts, reflex types (stretch / DTR / withdrawal / crossed extensor / pupillary)
 - 🗿 **Axial Muscles** — Lab 6 list with Origin / Insertion / Action; filterable by region
 - 🦵 **Limb Muscles** — Lab 7 list with O/I/A, tagged with SITS / Hamstring / Quad groupings
 - 🎯 **Visualizer**
@@ -56,3 +56,14 @@ models/           BodyParts3D OBJ files + manifest.json
 ```
 
 No build step, no dependencies installed locally — Three.js is loaded from a CDN via an import map. Open `index.html` in any modern browser.
+
+## License
+
+The original software implementation in this repository is **proprietary and source-visible**.
+It is published for source inspection, educational review, and portfolio demonstration only.
+Reuse, redistribution, modification, hosting, deployment, or incorporation into another
+project is not permitted without prior written permission. See [`LICENSE`](LICENSE).
+
+Third-party materials retain their own copyright and license terms, including the
+BodyParts3D assets identified above and any separately licensed course materials,
+libraries, media, or data included in the repository.
