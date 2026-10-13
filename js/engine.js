@@ -9,12 +9,15 @@ const SAVE_KEY = 'bi231_v3';
 const STORE = (function(){
   let s = {};
   try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); } catch(e) {}
-  if (!s.known) s.known = {};
-  if (!s.bestStreak) s.bestStreak = {};
+  if (!s || typeof s !== 'object' || Array.isArray(s)) s = {};
+  if (!s.known || typeof s.known !== 'object' || Array.isArray(s.known)) s.known = {};
+  if (!s.bestStreak || typeof s.bestStreak !== 'object' || Array.isArray(s.bestStreak)) s.bestStreak = {};
+  if (!s.answers || typeof s.answers !== 'object' || Array.isArray(s.answers)) s.answers = {};
+  if (!s.modes || typeof s.modes !== 'object' || Array.isArray(s.modes)) s.modes = {};
   if (!s.section) s.section = 'overview';
   return s;
 })();
-function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(STORE)); } catch(e){} }
+function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(STORE)); } catch(e){ const status=document.getElementById('saveStatus');if(status)status.textContent='Progress is temporary: this browser is blocking storage. '; } }
 window.__STORE = STORE;
 window.__SAVE = save;
 
@@ -58,13 +61,17 @@ function renderText(parsed, el, hi=true){
 
 /* ====== util ====== */
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function el(tag, cls, html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
+function el(tag, cls, html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=String(html); return e; }
 
 /* ============================================================
  *  SECTION REGISTRY — defines tab order
  * ============================================================ */
 const SECTIONS = [
   { id:'overview', title:'Overview', emoji:'🏠', kind:'overview' },
+  { id:'general', title:'General Senses', emoji:'🖐️', kind:'topic', data:D.general },
+  { id:'vision', title:'Vision', emoji:'👁️', kind:'topic', data:D.vision },
+  { id:'chemical', title:'Taste & Smell', emoji:'🍋', kind:'topic', data:D.chemical },
+  { id:'hearing', title:'Hearing & Balance', emoji:'👂', kind:'topic', data:D.hearing },
   { id:'nervous',  title:'Nervous',  emoji:'🧠', kind:'topic', data:D.nervous },
   { id:'muscle',   title:'Muscle',   emoji:'💪', kind:'topic', data:D.muscle },
   { id:'spinal',   title:'Spinal & Reflexes', emoji:'🔗', kind:'topic', data:D.spinal },
@@ -73,6 +80,7 @@ const SECTIONS = [
   { id:'viz',      title:'Visualizer',     emoji:'🎯', kind:'viz' },
   { id:'quiz',     title:'Quiz Hub',       emoji:'🎮', kind:'quiz-hub' },
 ];
+if (!SECTIONS.some(s => s.id === STORE.section)) STORE.section = 'overview';
 
 /* render top-level section tabs */
 function buildSectionTabs(){
@@ -81,14 +89,17 @@ function buildSectionTabs(){
   SECTIONS.forEach(s => {
     const b = el('button', 'sectab' + (STORE.section===s.id?' active':''), s.emoji + ' ' + s.title);
     b.dataset.sec = s.id;
+    b.setAttribute('aria-pressed', STORE.section===s.id);
+    b.setAttribute('aria-controls', 'sec-'+s.id);
     b.onclick = () => activateSection(s.id);
     nav.appendChild(b);
   });
 }
 
 function activateSection(id){
+  if (!SECTIONS.some(s => s.id===id)) return;
   STORE.section = id; save();
-  document.querySelectorAll('.sectab').forEach(t => t.classList.toggle('active', t.dataset.sec===id));
+  document.querySelectorAll('.sectab').forEach(t => { t.classList.toggle('active', t.dataset.sec===id); t.setAttribute('aria-pressed', t.dataset.sec===id); });
   document.querySelectorAll('.secpanel').forEach(p => p.classList.toggle('active', p.id==='sec-'+id));
   window.scrollTo({top:0, behavior:'smooth'});
   if (typeof updateStickyOffsets === 'function') updateStickyOffsets();
@@ -101,6 +112,7 @@ function buildAllPanels(){
   SECTIONS.forEach(s => {
     const panel = el('section', 'secpanel' + (STORE.section===s.id?' active':''));
     panel.id = 'sec-' + s.id;
+    panel.setAttribute('aria-label', s.title);
     if (s.kind==='overview') renderOverview(panel);
     else if (s.kind==='topic') renderTopicSection(panel, s);
     else if (s.kind==='muscle-topic') renderMuscleSection(panel, s);
@@ -113,43 +125,42 @@ function buildAllPanels(){
 /* ============================================================
  *  OVERVIEW
  * ============================================================ */
-function renderOverview(panel){
-  panel.appendChild(el('p','hint','Tap a section to start. Progress saves on this device.'));
-  const grid = el('div','overview-grid');
-  SECTIONS.filter(s => s.kind !== 'overview').forEach(s => {
-    const c = el('div','overview-card');
-    c.onclick = () => activateSection(s.id);
-    c.appendChild(el('h3', null, s.emoji+' '+s.title));
-    let desc = '';
-    if (s.data && s.data.blurb) desc = s.data.blurb;
-    else if (s.id==='viz') desc = '3D muscle viewer, action-potential graph, reflex arc animation.';
-    else if (s.id==='quiz') desc = 'Random mixed quiz across every section. Streak-based scoring.';
-    c.appendChild(el('p','desc', desc));
-    const meta = [];
-    if (s.data){
-      if (s.data.muscles && s.data.muscles.length) meta.push(s.data.muscles.length+' muscles');
-      if (s.data.learn && s.data.learn.length) meta.push(s.data.learn.length+' lessons');
-      if (s.data.cards && s.data.cards.length) meta.push(s.data.cards.length+' flashcards');
-      if (s.data.sequences && s.data.sequences.length) meta.push(s.data.sequences.length+' sequence'+(s.data.sequences.length>1?'s':''));
-    } else if (s.id==='viz'){
-      meta.push('3D viewer · AP graph · reflex arc');
-    } else if (s.id==='quiz'){
-      meta.push('all sections mixed');
-    }
-    c.appendChild(el('div','meta', meta.join(' · ')));
-    grid.appendChild(c);
-  });
-  panel.appendChild(grid);
+function appendSource(host, source){
+  if (!source) return;
+  const p = el('p','source-note'); p.textContent = 'Source: '+source; host.appendChild(p);
+}
 
-  const cov = el('div','card');
-  cov.innerHTML = '<h3 class="subtitle" style="margin:0 0 8px">Sources</h3>'+
-    '<ul style="font-size:14px;line-height:1.55;color:#cfd5ff;margin:0;padding-left:20px;">'+
-    '<li><b>Final exam study guide</b> — every numbered item used as a topic</li>'+
-    '<li><b>Lab 6: Axial Muscles</b> — head, neck, back, anterior torso (27 muscles)</li>'+
-    '<li><b>Lab 7: Limb Muscles</b> — shoulder, arm, forearm, hip, thigh, leg (51 muscles)</li>'+
-    '<li><b>Lab 8: Nervous Tissue &amp; Spinal Cord</b> — neuron anatomy, plexuses, reflexes</li>'+
-    '</ul>';
-  panel.appendChild(cov);
+function renderOverview(panel){
+  const hero = el('div','study-hero');
+  hero.innerHTML = '<span class="eyebrow">BIOL232 · THE SENSES</span><h2>Turn the material into memory.</h2><p>Understand the idea, recall it without looking, then test how it works. Start with general senses or jump into a topic.</p>';
+  const start = el('button','btn primary','Start with general senses →');
+  start.onclick = () => activateSection('general'); hero.appendChild(start); panel.appendChild(hero);
+  function group(title, sections){
+    panel.appendChild(el('h2','overview-heading',title));
+    const grid = el('div','overview-grid');
+    sections.forEach(s => {
+      const c = el('button','overview-card'); c.type='button';
+      c.onclick = () => activateSection(s.id);
+      c.appendChild(el('span','overview-title',s.emoji+' '+s.title));
+      const desc = s.data?.blurb || (s.id==='viz' ? 'Your 3D muscle viewer, action-potential graph and reflex arc.' : 'Choose BIOL232, BI231, or both. Review explanations and retry missed questions.');
+      c.appendChild(el('span','desc',desc));
+      const meta=[];
+      if(s.data?.learn) meta.push(s.data.learn.length+' lessons');
+      if(s.data?.cards) meta.push(s.data.cards.length+' cards');
+      if(s.data?.quizzes) meta.push(s.data.quizzes.length+' quiz questions');
+      if(s.data?.muscles) meta.push(s.data.muscles.length+' muscles');
+      c.appendChild(el('span','meta',meta.join(' · '))); grid.appendChild(c);
+    }); panel.appendChild(grid);
+  }
+  group('Explore the senses',SECTIONS.filter(s => s.data?.course==='BIOL232'));
+  group('Your BI231 study tools',SECTIONS.filter(s => s.data && s.data.course!=='BIOL232'));
+  group('Practice across topics',SECTIONS.filter(s => ['viz','quiz'].includes(s.id)));
+  const sources = el('details','card source-details');
+  sources.appendChild(el('summary',null,'About these study materials'));
+  sources.appendChild(el('p','hint','The BIOL232 activities are original study summaries and diagrams grounded in the four supplied lecture PDFs. Page references use PDF page numbers. They supplement your course materials; the original slides are not republished here.'));
+  const list=el('ul','source-list');
+  ['BIOL232: General Senses','BIOL232: Vision','BIOL232: Gustation and Olfaction','BIOL232: Hearing and Equilibrium','BI231: Final exam study guide; Lab 6 Axial Muscles; Lab 7 Limb Muscles; Lab 8 Nervous Tissue & Spinal Cord'].forEach(t => {const item=el('li');item.textContent=t;list.appendChild(item);});
+  sources.appendChild(list); panel.appendChild(sources);
 }
 
 /* ============================================================
@@ -158,11 +169,14 @@ function renderOverview(panel){
 function renderTopicSection(panel, sec){
   const data = sec.data;
   const modes = [];
+  if (data.course) { const title=el('div','section-intro');title.innerHTML='<span class="eyebrow">'+data.course+'</span><h2>'+data.title+'</h2><p>'+data.blurb+'</p>';panel.appendChild(title); }
   if (data.learn && data.learn.length) modes.push({id:'learn', label:'📖 Learn'});
   if (data.cards && data.cards.length) modes.push({id:'cards', label:'🃏 Flashcards'});
   if ((data.cards && data.cards.length) || (data.quizzes && data.quizzes.length)) modes.push({id:'quiz', label:'🎯 Quiz'});
   if (data.learn && data.learn.length) modes.push({id:'fill', label:'✍️ Fill Blanks'});
-  if (data.sequences && data.sequences.length){
+  if (data.course==='BIOL232') modes.push({id:'lab',label:'🔬 Practice lab'});
+  if (data.sequences && data.sequences.length && data.course==='BIOL232') modes.push({id:'pathways',label:'🔢 Pathways'});
+  if (data.sequences && data.sequences.length && data.course!=='BIOL232'){
     data.sequences.forEach(s => {
       modes.push({id:'seq:'+s.id+':learn', label:'📜 '+s.title+' — Learn'});
       modes.push({id:'seq:'+s.id+':order', label:'🔢 '+s.title+' — Order It'});
@@ -177,6 +191,8 @@ function renderTopicSection(panel, sec){
     else if (m.id==='cards') renderFlashMode(mp, data.cards, sec.id);
     else if (m.id==='quiz') renderQuizMode(mp, data, sec.id);
     else if (m.id==='fill') renderFillMode(mp, data.learn, sec.id);
+    else if (m.id==='pathways') renderPathways(mp, data.sequences, sec.id);
+    else if (m.id==='lab') prepareSensesLab(mp, sec.id);
     else if (m.id.startsWith('seq:')){
       const [, sid, sub] = m.id.split(':');
       const seq = data.sequences.find(x => x.id===sid);
@@ -186,26 +202,56 @@ function renderTopicSection(panel, sec){
     }
     panel.appendChild(mp);
   });
-  // activate the first mode by default
-  const first = panel.querySelector('.modepanel');
-  if (first) first.classList.add('active');
-  const tab = panel.querySelector('.modetab');
-  if (tab) tab.classList.add('active');
+  activateSavedMode(panel, sec.id);
 }
 
+function activateSavedMode(panel, secId){
+  const wanted = STORE.modes[secId];
+  const tabs = [...panel.querySelectorAll(':scope > .modetabs .modetab')];
+  (tabs.find(t => t.dataset.mode===wanted) || tabs[0])?.click();
+}
 function buildModeTabs(panel, secId, modes){
-  const nav = el('nav','modetabs');
-  modes.forEach((m,i) => {
-    const b = el('button', 'modetab', m.label);
-    b.dataset.mode = m.id;
+  const nav = el('nav','modetabs'); nav.setAttribute('aria-label','Study modes');
+  modes.forEach(m => {
+    const b = el('button', 'modetab', m.label); b.dataset.mode = m.id;
+    b.setAttribute('aria-pressed','false');
     b.onclick = () => {
-      panel.querySelectorAll('.modetab').forEach(t => t.classList.remove('active'));
-      b.classList.add('active');
-      panel.querySelectorAll('.modepanel').forEach(p => p.classList.toggle('active', p.dataset.mode===m.id));
+      panel.querySelectorAll(':scope > .modetabs .modetab').forEach(t => {t.classList.remove('active');t.setAttribute('aria-pressed','false');});
+      b.classList.add('active');b.setAttribute('aria-pressed','true');
+      panel.querySelectorAll(':scope > .modepanel').forEach(p => { const active=p.dataset.mode===m.id;p.classList.toggle('active',active);if(active)p._activate?.(); });
+      STORE.modes[secId]=m.id;save();
     };
     nav.appendChild(b);
   });
   panel.appendChild(nav);
+}
+function prepareSensesLab(mp, secId){
+  let loading=false,loaded=false;
+  async function load(){
+    if(loading||loaded)return;loading=true;mp.replaceChildren(el('p','hint','Loading practice lab…'));
+    try{
+      const {renderSensesLab}=await import('./senses-lab.js?v=8');
+      mp.replaceChildren();renderSensesLab(mp,secId,(host,questions,key,onChange)=>renderQuestionSession(host,questions,key,onChange));loaded=true;
+    }catch(error){
+      mp.replaceChildren(el('p','hint','The practice lab could not load. Check your connection and try again.'));
+      const retry=el('button','btn','Try again');retry.onclick=load;mp.appendChild(retry);
+    }finally{loading=false;}
+  }
+  mp._activate=load;
+}
+function renderPathways(mp, sequences, secId){
+  const label=el('label','select-label','Choose a pathway');
+  const select=el('select','study-select');label.appendChild(select);mp.appendChild(label);
+  sequences.forEach((seq,index) => {const opt=el('option');opt.selected=index===0;opt.value=seq.id;opt.textContent=seq.title;select.appendChild(opt);});
+  const host=el('div');mp.appendChild(host);
+  function render(){
+    const seq=sequences.find(s=>s.id===select.value);host.innerHTML='';
+    const explain=el('details','card');explain.appendChild(el('summary',null,'Learn this pathway'));
+    const steps=el('div','pathway-explainer');renderSequenceLearn(steps,seq,secId);explain.appendChild(steps);host.appendChild(explain);
+    if(seq.desc)host.appendChild(el('p','hint',seq.desc));
+    appendSource(host,seq.source);renderSequenceOrder(host,seq,secId);
+  }
+  select.onchange=render;render();
 }
 
 /* ====== LEARN MODE — long-form cards ====== */
@@ -217,7 +263,8 @@ function renderLearnMode(mp, learn, secId){
     '<span style="background:var(--t-ach)">ACh</span>'+
     '<span style="background:var(--t-trop)">troponin/tropomyosin</span>'+
     '<span style="background:var(--t-struct)">structures</span>');
-  mp.appendChild(legend);
+  if(D[secId]?.course==='BIOL232') mp.appendChild(el('p','hint','Highlighted terms become retrieval prompts in Fill Blanks. Each lesson points back to the supplied PDF.'));
+  else mp.appendChild(legend);
   learn.forEach((entry, i) => {
     const card = el('div','card');
     const row = el('div','row');
@@ -231,6 +278,7 @@ function renderLearnMode(mp, learn, secId){
     renderText(parse(entry.text), body, true);
     txt.appendChild(body);
     row.appendChild(num); row.appendChild(txt); card.appendChild(row);
+    appendSource(card,entry.source);
     mp.appendChild(card);
   });
 }
@@ -244,7 +292,8 @@ function renderFlashMode(mp, cards, secId){
     '<div class="bar"><i id="fc_bar"></i></div>'+
     '<span class="pill" id="fc_known">Known: 0</span>');
   mp.appendChild(hud);
-  const flash = el('div','flash');
+  const flash = el('button','flash');
+  flash.type='button'; flash.title='Flip flashcard (Enter or Space)';
   flash.innerHTML = '<span class="face-label" id="fc_face">Question</span><div id="fc_body"></div><span class="tap">tap card to flip</span>';
   mp.appendChild(flash);
   const ctl = el('div','controls');
@@ -269,6 +318,7 @@ function renderFlashMode(mp, cards, secId){
     } else {
       face.textContent = 'Answer';
       body.innerHTML = '<div class="ans">'+c.back+'</div>';
+      appendSource(body,c.source);
     }
     mp.querySelector('#fc_count').textContent = (state.idx+1)+' / '+cards.length;
     mp.querySelector('#fc_bar').style.width = ((state.idx+1)/cards.length*100)+'%';
@@ -287,67 +337,70 @@ function renderFlashMode(mp, cards, secId){
 /* ====== QUIZ MODE — multi-choice from cards+quizzes ====== */
 function buildQuestionPool(data){
   const pool = [];
-  // from cards: card front is Q, card back is A; distractors = other backs
-  (data.cards||[]).forEach((c,i) => {
-    pool.push({ q: c.front, a: c.back, _idx: 'card'+i });
+  // Senses quizzes use deliberately authored distractors rather than unrelated card backs.
+  if (!data.quizOnly) (data.cards||[]).forEach((c,i) => {
+    pool.push({ q:c.front, a:c.back, explanation:c.explanation, source:c.source, _idx:'card'+i });
   });
-  (data.quizzes||[]).forEach((q,i) => {
-    pool.push({ q: q.q, a: q.a, options: q.options, _idx:'qz'+i });
-  });
+  (data.quizzes||[]).forEach((q,i) => pool.push({...q, _idx:'qz'+i}));
   return pool;
 }
 function renderQuizMode(mp, data, secId){
-  const pool = buildQuestionPool(data);
-  if (!pool.length){ mp.appendChild(el('p','hint','No quiz yet for this section.')); return; }
-  const state = { i:0, order: shuffle([...Array(pool.length).keys()]), streak:0, locked:false };
-  const hud = el('div','progress',
-    '<span class="pill" id="qz_n">1 / '+pool.length+'</span>'+
-    '<div class="bar"><i id="qz_bar"></i></div>'+
-    '<span class="pill" id="qz_streak">Streak: 0</span>');
-  mp.appendChild(hud);
-  const card = el('div','card');
-  card.innerHTML = '<div class="txt" id="qz_q"></div><div id="qz_opts" style="margin-top:14px"></div>';
-  mp.appendChild(card);
-  const ctl = el('div','controls'); ctl.style.justifyContent='center';
-  ctl.innerHTML = '<button class="btn" id="qz_skip">Skip ›</button><button class="btn ghost" id="qz_reset">↺ Restart</button>';
-  mp.appendChild(ctl);
+  renderQuestionSession(mp, buildQuestionPool(data), secId);
+}
 
-  function distractorsFor(q){
-    if (q.options) return shuffle(q.options.slice());
-    const ans = q.a;
-    const pool2 = pool.filter(x => x.a !== ans).map(x => x.a);
-    shuffle(pool2);
-    return shuffle([ans, ...pool2.slice(0,3)]);
+/* One deliberate answer, an explanation, then Next. No delayed auto-advance. */
+function renderQuestionSession(mp, pool, scope, onChange){
+  if (!pool.length){mp.appendChild(el('p','hint','No questions in this set.'));return;}
+  const state={order:[],i:0,streak:0,answered:0,correct:0,locked:false,review:false};
+  const key=q=>scope+':'+(q.id||q._idx||pool.indexOf(q));
+  const toolbar=el('div','controls quiz-tools');
+  const review=el('button','btn small ghost','Review missed');
+  const restart=el('button','btn small ghost','↺ Restart');
+  toolbar.append(review,restart);mp.appendChild(toolbar);
+  const hud=el('div','progress quiz-progress');hud.setAttribute('aria-live','polite');
+  const count=el('span','pill quiz-count'),score=el('span','pill quiz-score');hud.append(count,score);mp.appendChild(hud);
+  const card=el('div','card quiz-card');
+  const src=el('p','cardsub quiz-topic'),prompt=el('h3','quiz-prompt'),choices=el('div','quiz-choices');
+  prompt.tabIndex=-1;
+  const feedback=el('div','quiz-feedback');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');
+  card.append(src,prompt,choices,feedback);mp.appendChild(card);
+  const controls=el('div','controls');
+  const next=el('button','btn primary quiz-next','Skip question →');controls.appendChild(next);mp.appendChild(controls);
+  function refreshReview(){const n=pool.filter(q=>STORE.answers[key(q)]===false).length;review.textContent=(state.review?'All questions':'Review missed')+(state.review?'':' ('+n+')');}
+  function begin(reviewOnly=false){
+    state.review=reviewOnly;state.i=0;state.streak=0;state.answered=0;state.correct=0;
+    state.order=shuffle(pool.filter(q=>!reviewOnly || STORE.answers[key(q)]===false).slice());update();
   }
   function update(){
-    const q = pool[state.order[state.i]];
-    mp.querySelector('#qz_n').textContent = (state.i+1)+' / '+pool.length;
-    mp.querySelector('#qz_bar').style.width = ((state.i+1)/pool.length*100)+'%';
-    mp.querySelector('#qz_streak').textContent = 'Streak: '+state.streak;
-    mp.querySelector('#qz_q').innerHTML = '<b>'+q.q+'</b>';
-    const opts = distractorsFor(q);
-    const oc = mp.querySelector('#qz_opts'); oc.innerHTML=''; state.locked=false;
-    opts.forEach(o => {
-      const b = el('button','vchoice', o);
-      b.onclick = () => {
-        if (state.locked) return;
-        if (o===q.a){
-          state.locked = true; b.classList.add('correct'); state.streak++;
-          if (state.streak > (STORE.bestStreak[secId]||0)){ STORE.bestStreak[secId]=state.streak; save(); }
-          mp.querySelector('#qz_streak').textContent = 'Streak: '+state.streak+' (best '+(STORE.bestStreak[secId]||0)+')';
-          setTimeout(() => { state.i = (state.i+1) % pool.length; if (state.i===0) state.order=shuffle(state.order); update(); }, 700);
-        } else {
-          b.classList.add('wrong'); state.streak=0;
-          mp.querySelector('#qz_streak').textContent = 'Streak: 0';
-          setTimeout(() => b.classList.remove('wrong'), 600);
-        }
-      };
-      oc.appendChild(b);
-    });
+    state.locked=false;choices.innerHTML='';feedback.replaceChildren();feedback.className='quiz-feedback';refreshReview();
+    count.textContent=state.order.length ? Math.min(state.i+1,state.order.length)+' / '+state.order.length : 'Review';
+    score.textContent=state.correct+' / '+state.answered+' correct';
+    if(state.i>=state.order.length){
+      src.textContent='';prompt.textContent=state.order.length?'Round complete':'No missed questions to review';
+      feedback.textContent=state.order.length ? 'You answered '+state.correct+' of '+state.answered+' correctly, with '+(state.order.length-state.answered)+' skipped. Restart for a fresh order or review your missed questions.' : 'Answer a few questions first. Any missed answers will be saved here on this browser.';
+      next.hidden=true;onChange?.(null);return;
+    }
+    const q=state.order[state.i];card.dataset.questionKey=key(q);src.textContent=q.topic||'';prompt.textContent=q.q;next.hidden=false;next.textContent='Skip question →';
+    const alternatives=q.options || [q.a,...shuffle([...new Set(pool.filter(p=>p.a!==q.a).map(p=>p.a))]).slice(0,3)];
+    shuffle([...new Set(alternatives)]).forEach(o=>{
+      const b=el('button','vchoice');b.textContent=o;
+      b.onclick=()=>{
+        if(state.locked)return;state.locked=true;state.answered++;
+        const correct=o===q.a;STORE.answers[key(q)]=correct;
+        if(correct){state.correct++;state.streak++;}else{state.streak=0;}
+        STORE.bestStreak[scope]=Math.max(STORE.bestStreak[scope]||0,state.streak);save();
+        [...choices.children].forEach(choice=>{choice.disabled=true;if(choice.textContent===q.a)choice.classList.add('correct');});
+        if(!correct)b.classList.add('wrong');
+        feedback.classList.add(correct?'is-correct':'is-wrong');
+        const result=el('strong');result.textContent=correct?'✓ Correct':'Review this: '+q.a;feedback.appendChild(result);
+        const explanation=el('p');explanation.textContent=q.explanation||q.a;feedback.appendChild(explanation);appendSource(feedback,q.source);
+        score.textContent=state.correct+' / '+state.answered+' correct · best streak '+STORE.bestStreak[scope];
+        next.textContent=state.i===state.order.length-1?'Finish round →':'Next question →';refreshReview();
+      };choices.appendChild(b);
+    });onChange?.(q);
   }
-  mp.querySelector('#qz_skip').onclick = () => { state.i = (state.i+1) % pool.length; if (state.i===0) state.order=shuffle(state.order); state.streak=0; update(); };
-  mp.querySelector('#qz_reset').onclick = () => { state.i=0; state.streak=0; state.order=shuffle(state.order); update(); };
-  update();
+  next.onclick=(event)=>{if(event.detail>1)return;state.i++;update();prompt.focus({preventScroll:true});};
+  restart.onclick=(event)=>{if(event.detail>1)return;begin(state.review);prompt.focus({preventScroll:true});};review.onclick=(event)=>{if(event.detail>1)return;begin(!state.review);prompt.focus({preventScroll:true});};begin();
 }
 
 /* ====== FILL BLANKS — same as original but multi-card ====== */
@@ -384,7 +437,8 @@ function renderFillMode(mp, learn, secId){
       const body = el('div');
       e.parsed.forEach(seg => {
         if (seg.k){
-          const b = el('span','blank', seg.t);
+          const b = el('button','blank', seg.t);
+          b.type='button'; b.setAttribute('aria-label','Choose the missing term');
           b.dataset.answer = seg.t;
           b.onclick = () => selectBlank(b);
           body.appendChild(b);
@@ -417,7 +471,7 @@ function renderFillMode(mp, learn, secId){
     const panel = mp.querySelector('#opt_panel'); if (panel) panel.remove();
     b.classList.remove('activeblank','wrong');
     if (choice === b.dataset.answer){
-      b.classList.add('correct'); b.textContent = b.dataset.answer; b.classList.remove('revealed');
+      b.classList.add('correct'); b.textContent = b.dataset.answer; b.classList.remove('revealed'); b.setAttribute('aria-label', b.dataset.answer+' — correct');
       correct++; updateHUD();
     } else {
       b.classList.add('wrong'); b.textContent = choice;
@@ -425,7 +479,7 @@ function renderFillMode(mp, learn, secId){
     }
   }
   mp.querySelector('#fl_reveal').onclick = () => {
-    list.querySelectorAll('.blank').forEach(b => { if (!b.classList.contains('correct')){ b.classList.add('revealed'); b.textContent = b.dataset.answer; }});
+    list.querySelectorAll('.blank').forEach(b => { if (!b.classList.contains('correct')){ b.classList.add('revealed'); b.textContent = b.dataset.answer; b.setAttribute('aria-label',b.dataset.answer+' — revealed'); }});
     const old = mp.querySelector('#opt_panel'); if (old) old.remove();
   };
   mp.querySelector('#fl_reset').onclick = build;
@@ -460,6 +514,7 @@ function renderSequenceOrder(mp, seq, secId){
     '<span class="pill" id="or_best">Best streak: '+(STORE.bestStreak[key]||0)+'</span>');
   mp.appendChild(hud);
   mp.appendChild(el('p','hint','Tap the steps in the correct order, 1 → '+N+'. Green = right, red = wrong (it bounces back).'));
+  const feedback=el('p','hint order-feedback');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');mp.appendChild(feedback);
   const slots = el('div'); mp.appendChild(slots);
   mp.appendChild(el('h3', null, 'Tap to place next:'));
   const choices = el('div'); mp.appendChild(choices);
@@ -468,7 +523,7 @@ function renderSequenceOrder(mp, seq, secId){
   mp.appendChild(reset);
 
   function build(){
-    nextSlot=0; streak=0;
+    nextSlot=0; streak=0;feedback.textContent='Choose the first step.';
     slots.innerHTML=''; choices.innerHTML='';
     for (let i=0;i<N;i++){
       const sl = el('div','slot');
@@ -486,19 +541,21 @@ function renderSequenceOrder(mp, seq, secId){
     updateHUD();
   }
   function place(i, btn){
-    const sl = document.getElementById('or_slot_'+nextSlot);
+    if (nextSlot>=N || btn.disabled) return;
+    const sl = slots.children[nextSlot];
     const txt = sl.querySelector('.stext');
     if (i===nextSlot){
       sl.classList.add('filled','correct');
       txt.innerHTML=''; renderText(parse(seq.steps[i]), txt, true);
-      btn.classList.add('used');
-      nextSlot++; streak++;
+      btn.classList.add('used'); btn.disabled=true;
+      nextSlot++; streak++;feedback.textContent='✓ Correct. '+(nextSlot===N?'Pathway complete.':'Choose step '+(nextSlot+1)+'.');
       if (streak > (STORE.bestStreak[key]||0)){ STORE.bestStreak[key]=streak; save(); }
       updateHUD();
       if (nextSlot===N){
-        setTimeout(() => { mp.querySelector('#or_s').textContent='🎉 Perfect! '+N+' / '+N; }, 120);
+        mp.querySelector('#or_s').textContent='✓ Complete! '+N+' / '+N;
       }
     } else {
+      feedback.textContent='That is not the next step. Try again for position '+(nextSlot+1)+'.';
       sl.classList.add('wrong'); setTimeout(() => sl.classList.remove('wrong'), 400);
       streak=0; updateHUD();
     }
@@ -546,7 +603,7 @@ function renderContractionViz(mp, seq, secId){
   }
   ring.innerHTML = html;
 
-  let idx=0, streak=0, lock=false;
+  let idx=0, streak=0, lock=false, advanceTimer=null;
   function updateRing(cur){
     ring.querySelectorAll('.ringnode').forEach(g => {
       const i = +g.dataset.i, c = g.querySelector('circle'), t = g.querySelector('text');
@@ -588,7 +645,7 @@ function renderContractionViz(mp, seq, secId){
         if (k===correct){
           lock=true; b.classList.add('correct'); streak++;
           mp.querySelector('#vz_score').textContent='Streak: '+streak;
-          setTimeout(() => { idx++; go(); }, 650);
+          advanceTimer=setTimeout(() => { idx++; go(); }, 650);
         } else {
           b.classList.add('wrong'); streak=0;
           mp.querySelector('#vz_score').textContent='Streak: 0';
@@ -599,7 +656,7 @@ function renderContractionViz(mp, seq, secId){
     });
   }
   mp.querySelector('#vz_replay').onclick = () => setScene(idx);
-  mp.querySelector('#vz_restart').onclick = () => { idx=0; streak=0; go(); };
+  mp.querySelector('#vz_restart').onclick = () => { clearTimeout(advanceTimer); idx=0; streak=0; lock=false; go(); };
   go();
 }
 
@@ -673,6 +730,7 @@ function contractionScene(i){
 function renderMuscleSection(panel, sec){
   const data = sec.data;
   const modes = [];
+  if (data.course) { const title=el('div','section-intro');title.innerHTML='<span class="eyebrow">'+data.course+'</span><h2>'+data.title+'</h2><p>'+data.blurb+'</p>';panel.appendChild(title); }
   if (data.learn && data.learn.length) modes.push({id:'learn', label:'📖 Notes'});
   modes.push({id:'list', label:'📋 List'});
   modes.push({id:'flash', label:'🃏 Flashcards'});
@@ -687,8 +745,7 @@ function renderMuscleSection(panel, sec){
     else if (m.id==='oia') renderMuscleOIA(mp, data.muscles, sec.id);
     panel.appendChild(mp);
   });
-  const first = panel.querySelector('.modepanel'); if (first) first.classList.add('active');
-  const tab = panel.querySelector('.modetab'); if (tab) tab.classList.add('active');
+  activateSavedMode(panel, sec.id);
 }
 
 function renderMuscleList(mp, muscles, secId){
@@ -743,7 +800,8 @@ function renderMuscleFlash(mp, muscles, secId){
     '<div class="bar"><i id="mf_bar"></i></div>'+
     '<span class="pill" id="mf_known">Known: 0</span>');
   mp.appendChild(hud);
-  const flash = el('div','flash');
+  const flash = el('button','flash');
+  flash.type='button'; flash.title='Flip flashcard (Enter or Space)';
   flash.innerHTML = '<span class="face-label" id="mf_face">Question</span><div id="mf_body"></div><span class="tap">tap card to flip</span>';
   mp.appendChild(flash);
   const ctl = el('div','controls'); ctl.style.marginTop='14px'; ctl.style.justifyContent='space-between';
@@ -798,7 +856,7 @@ function renderMuscleFlash(mp, muscles, secId){
 
 function renderMuscleOIA(mp, muscles, secId){
   mp.appendChild(el('p','hint','Match each muscle to its action. 4 choices per round; +1 streak for correct, reset on miss.'));
-  const state = { i:0, order: shuffle([...Array(muscles.length).keys()]), streak:0, lock:false };
+  const state = { i:0, order: shuffle([...Array(muscles.length).keys()]), streak:0, lock:false, timer:null };
   const key = secId+':oia:bestStreak';
   const hud = el('div','progress',
     '<span class="pill" id="oa_n">1 / '+muscles.length+'</span>'+
@@ -833,7 +891,7 @@ function renderMuscleOIA(mp, muscles, secId){
           state.lock=true; b.classList.add('correct'); state.streak++;
           if (state.streak > (STORE.bestStreak[key]||0)){ STORE.bestStreak[key]=state.streak; save(); }
           mp.querySelector('#oa_streak').textContent='Streak: '+state.streak+' (best '+(STORE.bestStreak[key]||0)+')';
-          setTimeout(() => { state.i = (state.i+1) % muscles.length; if (state.i===0) state.order=shuffle(state.order); update(); }, 700);
+          state.timer=setTimeout(() => { state.i = (state.i+1) % muscles.length; if (state.i===0) state.order=shuffle(state.order); update(); }, 700);
         } else {
           b.classList.add('wrong'); state.streak=0;
           mp.querySelector('#oa_streak').textContent='Streak: 0';
@@ -843,8 +901,8 @@ function renderMuscleOIA(mp, muscles, secId){
       oc.appendChild(b);
     });
   }
-  mp.querySelector('#oa_skip').onclick = () => { state.i=(state.i+1)%muscles.length; if (state.i===0) state.order=shuffle(state.order); state.streak=0; update(); };
-  mp.querySelector('#oa_reset').onclick = () => { state.i=0; state.streak=0; state.order=shuffle(state.order); update(); };
+  mp.querySelector('#oa_skip').onclick = () => { clearTimeout(state.timer); state.i=(state.i+1)%muscles.length; if (state.i===0) state.order=shuffle(state.order); state.streak=0; update(); };
+  mp.querySelector('#oa_reset').onclick = () => { clearTimeout(state.timer); state.i=0; state.streak=0; state.order=shuffle(state.order); update(); };
   update();
 }
 
@@ -866,8 +924,7 @@ function renderVizSection(panel){
     else if (m.id==='reflex') mp.innerHTML = '<div id="viz_reflex_host"></div>';
     panel.appendChild(mp);
   });
-  const first = panel.querySelector('.modepanel'); if (first) first.classList.add('active');
-  const tab = panel.querySelector('.modetab'); if (tab) tab.classList.add('active');
+  activateSavedMode(panel, 'viz');
 }
 
 let __viz_loaded = false;
@@ -876,7 +933,11 @@ async function ensureVizLoaded(){
   __viz_loaded = true;
   try {
     const viz = await import('./viz.js?v=7');
-    viz.mountBody3D(document.getElementById('viz_body3d_host'));
+    const bodyHost=document.getElementById('viz_body3d_host');
+    viz.mountBody3D(bodyHost).catch(error=>{
+      const reason=/webgl/i.test(error.message)?'This browser could not create a WebGL graphics context. ':'The 3D viewer could not start. ';
+      bodyHost.replaceChildren(el('p','note',reason+'The muscle cards, action-potential graph, and reflex arc are still available.'));
+    });
     viz.mountAP(document.getElementById('viz_ap_host'));
     viz.mountReflex(document.getElementById('viz_reflex_host'));
   } catch(e){
@@ -890,73 +951,25 @@ async function ensureVizLoaded(){
  *  QUIZ HUB — random mixed quiz across all sections
  * ============================================================ */
 function renderQuizHub(panel){
-  const allQ = [];
-  ['nervous','muscle','spinal'].forEach(sid => {
-    const d = D[sid];
-    (d.cards||[]).forEach(c => allQ.push({q:c.front, a:c.back, src:sid, _key:'card'}));
-    (d.quizzes||[]).forEach(q => allQ.push({q:q.q, a:q.a, options:q.options, src:sid, _key:'qz'}));
-  });
-  // muscle O/I/A questions: action -> name
-  ['axial','limb'].forEach(sid => {
-    const d = D[sid];
-    (d.muscles||[]).forEach(m => {
-      allQ.push({q: 'Which muscle has this action: "'+m.action+'"?', a:m.name, src:sid, _key:'musc-action'});
-      allQ.push({q: 'Origin of '+m.name+'?', a:m.origin, src:sid, _key:'musc-O'});
-      allQ.push({q: 'Insertion of '+m.name+'?', a:m.insertion, src:sid, _key:'musc-I'});
-    });
-    (d.cards||[]).forEach(c => allQ.push({q:c.front, a:c.back, src:sid, _key:'card'}));
-  });
-
-  const state = { i:0, order: shuffle([...Array(allQ.length).keys()]), streak:0, lock:false, n:0 };
-  const head = el('div','progress',
-    '<span class="pill" id="qh_n">Question 1</span>'+
-    '<div class="bar"><i id="qh_bar"></i></div>'+
-    '<span class="pill warn" id="qh_streak">Streak: 0</span>');
-  panel.appendChild(head);
-  const card = el('div','qmix');
-  card.innerHTML = '<div class="cardsub" id="qh_src"></div><div class="qprompt" id="qh_q"></div><div id="qh_opts"></div>';
-  panel.appendChild(card);
-  const ctl = el('div','controls'); ctl.style.justifyContent='center';
-  ctl.innerHTML = '<button class="btn" id="qh_skip">Skip ›</button><button class="btn ghost" id="qh_reset">↺ Restart</button>';
-  panel.appendChild(ctl);
-
-  function answersPool(q){
-    if (q.options) return shuffle(q.options.slice());
-    const same = allQ.filter(x => x._key===q._key && x.a !== q.a).map(x => x.a);
-    shuffle(same);
-    return shuffle([q.a, ...same.slice(0,3)]);
-  }
+  panel.appendChild(el('h2',null,'Quiz Hub'));
+  panel.appendChild(el('p','hint','Choose your course, answer without looking, and read the explanation before moving on. Missed answers are saved for another round.'));
+  const label=el('label','select-label','Question set');
+  const select=el('select','study-select');
+  [['senses','BIOL232 · Senses'],['legacy','BI231 · Original topics'],['all','Both courses']].forEach(([value,text])=>{const option=el('option');option.value=value;option.selected=value==='senses';option.textContent=text;select.appendChild(option);});
+  label.appendChild(select);panel.appendChild(label);
+  const host=el('div');panel.appendChild(host);
   function update(){
-    state.n++;
-    const q = allQ[state.order[state.i]];
-    panel.querySelector('#qh_n').textContent = 'Question '+state.n;
-    panel.querySelector('#qh_bar').style.width = ((state.i+1)/allQ.length*100)+'%';
-    panel.querySelector('#qh_streak').textContent = 'Streak: '+state.streak+' (best '+(STORE.bestStreak['hub']||0)+')';
-    const srcName = SECTIONS.find(s => s.id===q.src);
-    panel.querySelector('#qh_src').textContent = srcName ? srcName.emoji+' '+srcName.title : q.src;
-    panel.querySelector('#qh_q').textContent = q.q;
-    const oc = panel.querySelector('#qh_opts'); oc.innerHTML=''; state.lock=false;
-    answersPool(q).forEach(o => {
-      const b = el('button','vchoice', o);
-      b.onclick = () => {
-        if (state.lock) return;
-        if (o===q.a){
-          state.lock=true; b.classList.add('correct'); state.streak++;
-          if (state.streak > (STORE.bestStreak['hub']||0)){ STORE.bestStreak['hub']=state.streak; save(); }
-          panel.querySelector('#qh_streak').textContent='Streak: '+state.streak+' (best '+(STORE.bestStreak['hub']||0)+')';
-          setTimeout(() => { state.i=(state.i+1)%allQ.length; if (state.i===0) state.order=shuffle(state.order); update(); }, 650);
-        } else {
-          b.classList.add('wrong'); state.streak=0;
-          panel.querySelector('#qh_streak').textContent='Streak: 0';
-          setTimeout(() => b.classList.remove('wrong'), 600);
-        }
-      };
-      oc.appendChild(b);
-    });
+    const questions=[];
+    SECTIONS.filter(s=>s.data && (select.value==='all' || (select.value==='senses')===(s.data.course==='BIOL232'))).forEach(s=>{
+      buildQuestionPool(s.data).forEach(q=>questions.push({...q,id:s.id+':'+q._idx,topic:s.title}));
+      (s.data.muscles||[]).forEach((m,i)=>{
+        questions.push({id:s.id+':action'+i,q:'Which muscle has this action: '+m.action+'?',a:m.name,topic:s.title,options:[m.name,...shuffle(s.data.muscles.filter(x=>x.action!==m.action).map(x=>x.name)).slice(0,3)]});
+        questions.push({id:s.id+':origin'+i,q:'Origin of '+m.name+'?',a:m.origin,topic:s.title,options:[m.origin,...shuffle([...new Set(s.data.muscles.filter(x=>x.origin!==m.origin).map(x=>x.origin))]).slice(0,3)]});
+        questions.push({id:s.id+':insertion'+i,q:'Insertion of '+m.name+'?',a:m.insertion,topic:s.title,options:[m.insertion,...shuffle([...new Set(s.data.muscles.filter(x=>x.insertion!==m.insertion).map(x=>x.insertion))]).slice(0,3)]});
+      });
+    });host.replaceChildren();renderQuestionSession(host,questions,'hub');
   }
-  panel.querySelector('#qh_skip').onclick = () => { state.i=(state.i+1)%allQ.length; if (state.i===0) state.order=shuffle(state.order); state.streak=0; update(); };
-  panel.querySelector('#qh_reset').onclick = () => { state.i=0; state.streak=0; state.n=0; state.order=shuffle(state.order); update(); };
-  update();
+  select.onchange=update;update();
 }
 
 /* ============================================================
@@ -980,7 +993,7 @@ if (STORE.section==='viz') ensureVizLoaded();
 document.getElementById('resetAll').onclick = (e) => {
   e.preventDefault();
   if (!confirm('Wipe all saved progress?')) return;
-  localStorage.removeItem(SAVE_KEY);
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) { /* Browser may block storage. */ }
   location.reload();
 };
 

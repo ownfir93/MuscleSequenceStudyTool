@@ -1,10 +1,32 @@
-# BI231 Final Exam — Study Aid
+# Anatomy & Physiology — Study Studio
 
-A single-page (no build, no backend) study tool for BI231 Anatomy & Physiology I, deployed on GitHub Pages.
+A single-page (no build, no backend) study tool for BI231 Anatomy & Physiology I and BIOL232 senses, deployed on the existing GitHub Pages site.
 
 **Live page:** https://ownfir93.github.io/MuscleSequenceStudyTool/
 
-## What's covered
+## BIOL232 senses
+
+Four integrated sections are based on the supplied course PDFs: **General Senses**, **Vision**, **Gustation & Olfaction**, and **Hearing & Equilibrium**.
+
+The expansion includes **85 lessons, 133 flashcards, 89 topic quiz questions, 19 pathways, and 8 visual labs with 62 applied questions**.
+
+Each section includes:
+- **Learn:** concise explanations with highlighted key terms and source page references
+- **Flashcards:** retrieval prompts, answer reveal, shuffle, and persistent Known tracking
+- **Quiz:** deliberately authored distractors, explanations after every answer, manual progression, and persistent missed-question review
+- **Fill Blanks:** keyboard-accessible retrieval practice from the lessons
+- **Pathways:** expandable explanations and tap-to-order causal sequences
+- **Practice lab:** original SVG labeling and comparison/classification activities
+
+The Quiz Hub can draw from BIOL232, the original BI231 material, or both. Existing BI231 content, model assets, and previously saved progress are retained under the existing storage key. New state remains local to the current browser; it does not sync between devices.
+
+### Source handling
+
+The senses material consists of original study summaries and original diagrams derived from the four supplied lecture PDFs. Every lesson, card, quiz explanation, and pathway identifies the relevant PDF page/slide. Original slides, textbook artwork, and raw course PDFs are **not** distributed in this repository. Source-page references are for checking against the learner's own course copies.
+
+These are study aids, not medical guidance or a replacement for the instructor's material. Source limitations and ambiguous claims were reviewed during authoring; activities avoid presenting disputed simplifications as universal facts.
+
+## Original BI231 coverage
 
 Grounded in the BI231 (Fall 2025) sources:
 - **Final exam study guide** — every numbered topic
@@ -49,13 +71,23 @@ Source: `https://dbarchive.biosciencedbc.jp/en/bodyparts3d/`
 ```
 index.html        page shell
 css/style.css     all styling
-js/data.js        all study content (single source of truth)
+js/data.js        original BI231 study content
+js/senses-data.js BIOL232 lessons, cards, quizzes, pathways
+js/senses-lab.js  original senses diagrams and applied practice
 js/engine.js      section nav, study modes, persistence
 js/viz.js         3D viewer, 2D map, AP graph, reflex arc
 models/           BodyParts3D OBJ files + manifest.json
 ```
 
-No build step, no dependencies installed locally — Three.js is loaded from a CDN via an import map. Open `index.html` in any modern browser.
+No build step, no dependencies installed locally — Three.js is loaded from a CDN via an import map. Serve the repository with `python -m http.server 8765` and open `http://localhost:8765/` in a modern browser. ES modules require a web server; opening a file URL directly is not supported.
+
+## Validation
+
+- Syntax/content: `node --check js/engine.js && node --check js/senses-lab.js && node tools/validate_senses.mjs`
+- Browser regression suite: `python tools/test_study_app.py` (requires Python Playwright and Chromium; see the script for URL/browser options)
+- Manual QA: desktop and 390-pixel mobile layouts; every new course mode; correct/incorrect answers; retry/restart; keyboard controls; reload persistence; original muscle sequences and visualizer
+
+The app itself has no build step or server-side dependencies. Browser-test tools are optional development dependencies.
 
 ## License
 

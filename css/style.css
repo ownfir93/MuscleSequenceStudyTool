@@ -348,3 +348,70 @@ header .sub{color:var(--muted);font-size:13px;margin:0 2px 12px;}
 /* reflex arc animations */
 .signalPulse{animation:signalPulse 2.4s linear infinite;}
 @keyframes signalPulse{0%{offset-distance:0%;opacity:0}10%{opacity:1}90%{opacity:1}100%{offset-distance:100%;opacity:0}}
+
+/* ===== BIOL232 study studio ===== */
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:1.7px;color:#b7caff;margin:10px 0 8px;display:block;}
+header h1{font-size:30px;letter-spacing:-.7px;}
+header .sub{line-height:1.5;margin-top:8px;}
+.study-hero{background:linear-gradient(125deg,#222b57,#182c3d);border:1px solid #3b5778;border-radius:20px;padding:26px;margin:12px 0 28px;}
+.study-hero h2{font-size:31px;line-height:1.15;margin:10px 0;letter-spacing:-.6px;max-width:540px;}
+.study-hero p{font-size:15px;line-height:1.6;color:#c0cbe6;max-width:570px;margin-bottom:20px;}
+.overview-heading{font-size:18px;margin:26px 2px 12px;}
+.overview-title{font-size:17px;font-weight:800;}
+button.overview-card{text-align:left;color:var(--ink);font-family:inherit;}
+.overview-card .meta{line-height:1.5;}
+.section-intro h2{font-size:26px;margin:5px 0;}
+.section-intro p{font-size:14px;line-height:1.5;color:#bcc7ea;margin:0 0 14px;}
+.source-note{font-size:12px;line-height:1.5;color:#b0bddf;margin:14px 0 0;}
+.source-list{font-size:13px;line-height:1.7;color:#bdc8e7;padding-left:20px;}
+.source-details summary{font-weight:700;cursor:pointer;min-height:30px;}
+.source-details p{margin-top:12px;line-height:1.6;}
+button.flash{width:100%;color:var(--ink);font:inherit;padding:42px 22px;}
+.flash .source-note{font-size:12px;}
+.flash .hinttext{margin:8px;}
+.quiz-prompt{font-size:20px;line-height:1.45;margin:4px 0 18px;}
+.quiz-feedback{line-height:1.6;font-size:15px;}
+.quiz-feedback:empty{display:none;}
+.quiz-feedback.is-correct,.quiz-feedback.is-wrong{padding:15px;margin-top:16px;border-left:3px solid var(--good);background:rgba(51,209,122,.07);border-radius:0 10px 10px 0;}
+.quiz-feedback.is-wrong{border-color:var(--warn);background:rgba(255,209,102,.06);}
+.quiz-feedback p{margin:8px 0 0;}
+.quiz-feedback strong{color:#e9f1ff;}
+.quiz-feedback .source-note{font-size:12px;color:#bac8e7;}
+.quiz-tools{justify-content:flex-end;}
+.quiz-score{white-space:normal;text-align:right;}
+.quiz-progress{flex-wrap:wrap;}
+.vchoice:disabled{opacity:1;cursor:default;}
+.study-select{display:block;width:100%;max-width:100%;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;margin:8px 0 18px;min-height:46px;}
+.select-label{font-weight:700;font-size:14px;display:block;}
+.pathway-explainer{margin-top:18px;}
+.pathway-explainer .card{box-shadow:none;}
+.lab-diagram{border:1px solid var(--line);background:#10172c;border-radius:16px;margin:12px 0 18px;padding:12px;overflow:hidden;}
+.lab-diagram svg{display:block;width:100%;height:auto;max-height:430px;margin:auto;}
+.lab-description{color:#bfcae6;font-size:13px;line-height:1.6;}
+.lab-diagram .active-marker{fill:#ffd166;stroke:#ffd166;}
+.lab-diagram .active-marker text{fill:#08122e;stroke:none;}
+.blank{font-family:inherit;font-size:inherit;line-height:inherit;border-top:0;border-left:0;border-right:0;}
+.skip-link{position:fixed;top:8px;left:10px;transform:translateY(-150%);z-index:100;background:var(--ink);color:var(--bg);padding:12px;border-radius:8px;}
+.skip-link:focus{transform:translateY(0);}
+button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:3px;}
+button,.sectab,.modetab{min-height:44px;}
+summary{cursor:pointer;}
+.secpanel{scroll-margin-top:160px;}
+@media(max-width:520px){
+  header h1{font-size:27px;}
+  .study-hero{padding:21px;}
+  .study-hero h2{font-size:27px;}
+  .overview-grid{grid-template-columns:1fr;}
+  .quiz-prompt{font-size:18px;}
+  .lab-diagram{padding:5px;}
+  .quiz-progress .pill{font-size:12px;padding:6px 9px;}
+  .txt{font-size:16px;}
+  .source-note{overflow-wrap:anywhere;}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}
+}
+
+.lab-diagram.is-enlarged{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-x:contain;}
+.lab-diagram:focus-visible{outline:3px solid var(--warn);outline-offset:3px;}
+.diagram-controls{margin:12px 0 0;}
